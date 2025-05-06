@@ -1,3 +1,4 @@
+
 /**
  * Environment variable manager for the application
  * Loads variables from the server API or uses localStorage as fallback
@@ -86,18 +87,22 @@ class EnvManager {
         // Check if we need to update password fields from localStorage
         const storedVars = localStorage.getItem('env_variables');
         if (storedVars) {
-          const parsedVars = JSON.parse(storedVars);
-          if (parsedVars.MYSQL_PASSWORD) {
-            this.variables.MYSQL_PASSWORD = parsedVars.MYSQL_PASSWORD;
-          }
-          if (parsedVars.SMTP_PASSWORD) {
-            this.variables.SMTP_PASSWORD = parsedVars.SMTP_PASSWORD;
-          }
-          if (!this.variables.MYSQL_USER && parsedVars.MYSQL_USER) {
-            this.variables.MYSQL_USER = parsedVars.MYSQL_USER;
-          }
-          if (!this.variables.SMTP_USER && parsedVars.SMTP_USER) {
-            this.variables.SMTP_USER = parsedVars.SMTP_USER;
+          try {
+            const parsedVars = JSON.parse(storedVars);
+            if (parsedVars.MYSQL_PASSWORD) {
+              this.variables.MYSQL_PASSWORD = parsedVars.MYSQL_PASSWORD;
+            }
+            if (parsedVars.SMTP_PASSWORD) {
+              this.variables.SMTP_PASSWORD = parsedVars.SMTP_PASSWORD;
+            }
+            if (!this.variables.MYSQL_USER && parsedVars.MYSQL_USER) {
+              this.variables.MYSQL_USER = parsedVars.MYSQL_USER;
+            }
+            if (!this.variables.SMTP_USER && parsedVars.SMTP_USER) {
+              this.variables.SMTP_USER = parsedVars.SMTP_USER;
+            }
+          } catch (error) {
+            console.error('Error parsing stored variables:', error);
           }
         }
       }
@@ -152,7 +157,7 @@ class EnvManager {
   }
   
   public get(key: string): string | undefined {
-    return this.variables[key as keyof EnvVariables];
+    return this.variables[key];
   }
   
   public set(key: string, value: string): void {
@@ -161,7 +166,9 @@ class EnvManager {
     this.applyVariable(key, value);
     
     // Also send to server if possible
-    this.sendToServer({ [key]: value }).catch(console.error);
+    const updateObj: Record<string, string> = {};
+    updateObj[key] = value;
+    this.sendToServer(updateObj).catch(console.error);
   }
   
   private async sendToServer(envVars: Record<string, string>): Promise<void> {
@@ -191,8 +198,16 @@ class EnvManager {
     this.saveToStorage();
     this.applyVariables();
     
+    // Convert EnvVariables to Record<string, string> for sending to server
+    const recordToSend: Record<string, string> = {};
+    Object.entries(variables).forEach(([key, value]) => {
+      if (value !== undefined) {
+        recordToSend[key] = value;
+      }
+    });
+    
     // Also send to server if possible
-    this.sendToServer(variables).catch(console.error);
+    this.sendToServer(recordToSend).catch(console.error);
   }
   
   private saveToStorage(): void {
@@ -252,7 +267,7 @@ class EnvManager {
         const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*"?([^"]*)"?\s*$/);
         if (match) {
           const [, key, value] = match;
-          newVars[key as keyof EnvVariables] = value;
+          newVars[key] = value;
         }
       });
       

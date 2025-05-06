@@ -69,6 +69,7 @@ function createTransporter(config) {
   // Convert string 'true'/'false' to boolean if needed
   const secure = config.secure === 'true' || config.secure === true;
   const secureType = (config.secureType || 'TLS').toUpperCase();
+  const isZoho = config.smtpHost && config.smtpHost.includes('zoho');
   
   let transporterOptions = {
     host: config.smtpHost,
@@ -81,7 +82,15 @@ function createTransporter(config) {
     logger: true  // Log information to the console
   };
   
-  if (secure) {
+  // Especialización para Zoho Mail
+  if (isZoho) {
+    logger.info('Zoho Mail detected, using specialized configuration');
+    transporterOptions.secure = false; // Para Zoho con puerto 587, debemos configurar secure:false
+    transporterOptions.tls = {
+      rejectUnauthorized: false,
+      ciphers: 'SSLv3'
+    };
+  } else if (secure) {
     if (secureType === 'SSL') {
       // SSL configuration (legacy)
       transporterOptions.secure = false;

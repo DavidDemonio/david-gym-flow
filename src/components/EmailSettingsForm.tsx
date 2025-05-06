@@ -10,6 +10,7 @@ import { Send, TestTube, Save, User, AlertCircle, Check, Loader2 } from 'lucide-
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { envManager } from '../utils/envManager';
 
 const EmailSettingsForm: React.FC = () => {
   const { toast } = useToast();
@@ -33,23 +34,72 @@ const EmailSettingsForm: React.FC = () => {
   const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
   const [saveProfileStatus, setSaveProfileStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
   const [saveEmailStatus, setSaveEmailStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [isZoho, setIsZoho] = useState(false);
 
   // Load saved configurations
   useEffect(() => {
-    const savedEmailConfig = mysqlConnection.getEmailConfig();
-    if (savedEmailConfig) {
-      setEmailConfig(savedEmailConfig);
-    }
+    const loadConfig = async () => {
+      // Try to load from envManager first
+      await envManager.ready();
+      
+      const fromEnv = {
+        smtpHost: envManager.get('SMTP_HOST') || '',
+        smtpPort: parseInt(envManager.get('SMTP_PORT') || '587'),
+        smtpUser: envManager.get('SMTP_USER') || '',
+        smtpPassword: envManager.get('SMTP_PASSWORD') || '',
+        fromEmail: envManager.get('FROM_EMAIL') || '',
+        secure: envManager.get('SMTP_SECURE') === 'true',
+        secureType: envManager.get('SMTP_SECURE_TYPE') || 'TLS'
+      };
+      
+      if (fromEnv.smtpHost) {
+        setEmailConfig(fromEnv);
+        // Detectar si es Zoho
+        checkIfZoho(fromEnv.smtpHost);
+      } else {
+        // Fall back to mysqlConnection
+        const savedEmailConfig = mysqlConnection.getEmailConfig();
+        if (savedEmailConfig) {
+          setEmailConfig(savedEmailConfig);
+          // Detectar si es Zoho
+          checkIfZoho(savedEmailConfig.smtpHost);
+        }
+      }
+      
+      const savedUserProfile = mysqlConnection.getUserProfile();
+      if (savedUserProfile) {
+        setUserProfile(savedUserProfile);
+      }
+    };
     
-    const savedUserProfile = mysqlConnection.getUserProfile();
-    if (savedUserProfile) {
-      setUserProfile(savedUserProfile);
-    }
+    loadConfig();
   }, []);
+  
+  const checkIfZoho = (host: string) => {
+    const isZohoHost = host && host.toLowerCase().includes('zoho');
+    setIsZoho(isZohoHost);
+    
+    // Si es Zoho, aplicar configuración específica
+    if (isZohoHost) {
+      setEmailConfig(prev => ({
+        ...prev,
+        secure: false, // Para Zoho con puerto 587, debe ser false
+      }));
+    }
+  };
   
   // Handle email config changes
   const handleEmailConfigChange = (field: keyof EmailConfig, value: string | number | boolean) => {
-    setEmailConfig(prev => ({ ...prev, [field]: value }));
+    setEmailConfig(prev => {
+      const newConfig = { ...prev, [field]: value };
+      
+      // Si cambia el host, verificar si es Zoho
+      if (field === 'smtpHost') {
+        checkIfZoho(value as string);
+      }
+      
+      return newConfig;
+    });
   };
   
   // Handle user profile changes
@@ -71,7 +121,18 @@ const EmailSettingsForm: React.FC = () => {
     
     setSaveEmailStatus('saving');
     try {
+      // Guardar también en envManager
+      envManager.set('SMTP_HOST', emailConfig.smtpHost);
+      envManager.set('SMTP_PORT', emailConfig.smtpPort.toString());
+      envManager.set('SMTP_USER', emailConfig.smtpUser);
+      envManager.set('SMTP_PASSWORD', emailConfig.smtpPassword);
+      envManager.set('FROM_EMAIL', emailConfig.fromEmail);
+      envManager.set('SMTP_SECURE', emailConfig.secure.toString());
+      envManager.set('SMTP_SECURE_TYPE', emailConfig.secureType);
+      
+      // También guardar en mysqlConnection para compatibilidad
       await mysqlConnection.setEmailConfig(emailConfig);
+      
       setSaveEmailStatus('success');
       toast({
         title: "Configuración guardada",
@@ -359,6 +420,11 @@ const EmailSettingsForm: React.FC = () => {
               <CardTitle>Configuración SMTP</CardTitle>
               <CardDescription>
                 Configure el servidor de correo electrónico para enviar notificaciones
+                {isZoho && (
+                  <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                    Zoho Mail
+                  </Badge>
+                )}
               </CardDescription>
             </div>
             {saveEmailStatus === 'success' && (
@@ -376,6 +442,11 @@ const EmailSettingsForm: React.FC = () => {
                 onChange={(e) => handleEmailConfigChange('smtpHost', e.target.value)}
                 placeholder="smtp.example.com"
               />
+              {isZoho && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Configuración de Zoho Mail detectada
+                </p>
+              )}
             </div>
             <div className="space-y-2">
               <Label htmlFor="smtp_port">Puerto SMTP</Label>
@@ -386,6 +457,11 @@ const EmailSettingsForm: React.FC = () => {
                 onChange={(e) => handleEmailConfigChange('smtpPort', parseInt(e.target.value))}
                 placeholder="587"
               />
+              {isZoho && (
+                <p className="text-xs text-blue-600 mt-1">
+                  Puerto recomendado para Zoho: 587
+                </p>
+              )}
             </div>
           </div>
           
@@ -427,18 +503,23 @@ const EmailSettingsForm: React.FC = () => {
                 id="secure_connection"
                 checked={emailConfig.secure}
                 onCheckedChange={(checked) => handleEmailConfigChange('secure', checked)}
+                disabled={isZoho} // Deshabilitar para Zoho
               />
-              <Label htmlFor="secure_connection">Conexión Segura (SSL/TLS)</Label>
+              <Label htmlFor="secure_connection" className={isZoho ? "text-gray-500" : ""}>
+                Conexión Segura (SSL/TLS)
+                {isZoho && <span className="text-xs ml-1">(Configurado automáticamente para Zoho)</span>}
+              </Label>
             </div>
             
-            {emailConfig.secure && (
+            {(emailConfig.secure || isZoho) && (
               <div className="space-y-2">
                 <Label htmlFor="secure_type">Tipo de Seguridad</Label>
                 <Select
                   value={emailConfig.secureType}
                   onValueChange={(value) => handleEmailConfigChange('secureType', value)}
+                  disabled={isZoho} // Deshabilitar para Zoho
                 >
-                  <SelectTrigger id="secure_type">
+                  <SelectTrigger id="secure_type" className={isZoho ? "bg-gray-100" : ""}>
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
                   <SelectContent>
@@ -446,6 +527,11 @@ const EmailSettingsForm: React.FC = () => {
                     <SelectItem value="TLS">TLS</SelectItem>
                   </SelectContent>
                 </Select>
+                {isZoho && (
+                  <p className="text-xs text-blue-600">
+                    Para Zoho Mail se usa una configuración especial de TLS
+                  </p>
+                )}
               </div>
             )}
           </div>

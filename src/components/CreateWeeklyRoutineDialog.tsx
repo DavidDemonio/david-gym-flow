@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -9,11 +10,11 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Exercise as DataExercise } from "../data/equipmentData";
-import { Exercise, mysqlConnection } from "../utils/mysqlConnection";
+import { Exercise, mysqlConnection, Routine } from "../utils/mysqlConnection";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Check, Database } from "lucide-react";
+import { Calendar, Check, Database, Loader2 } from "lucide-react";
 import { statsManager } from "../utils/statsManager";
 
 interface CreateWeeklyRoutineDialogProps {
@@ -41,6 +42,7 @@ export function CreateWeeklyRoutineDialog({
     "4": "Full Body",
     "5": "Core y Cardio"
   });
+  const [isLoading, setIsLoading] = useState(false);
   
   // Comprobar si estamos conectados a MySQL
   const [databaseConnected, setDatabaseConnected] = useState(false);
@@ -48,130 +50,159 @@ export function CreateWeeklyRoutineDialog({
   
   useEffect(() => {
     // Comprobar conexión a la base de datos
-    const isConnected = mysqlConnection.isConnected();
-    setDatabaseConnected(isConnected);
-    
-    if (isConnected) {
-      // Cargar ejercicios de la base de datos
-      const loadExercises = async () => {
-        const dbExercises = await mysqlConnection.getExercises();
-        if (dbExercises && dbExercises.length > 0) {
-          setDatabaseExercises(dbExercises);
-          console.log("Ejercicios cargados desde MySQL:", dbExercises.length);
-        }
-      };
+    const checkConnection = async () => {
+      const isConnected = mysqlConnection.isConnected();
+      setDatabaseConnected(isConnected);
       
-      loadExercises();
+      if (isConnected) {
+        // Cargar ejercicios de la base de datos
+        try {
+          const dbExercises = await mysqlConnection.getExercises();
+          if (dbExercises && dbExercises.length > 0) {
+            setDatabaseExercises(dbExercises);
+            console.log("Ejercicios cargados desde MySQL:", dbExercises.length);
+          }
+        } catch (err) {
+          console.error("Error al cargar ejercicios:", err);
+        }
+      }
+    };
+    
+    if (open) {
+      checkConnection();
     }
-  }, []);
+  }, [open]);
   
   // Función para crear rutina automáticamente basada en los grupos musculares
   const createAutomaticRoutine = async () => {
-    const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-    const selectedDays = weekDays.slice(0, days);
-    
-    const routineData: DayExercises = {};
-    
-    // Determinar qué conjunto de ejercicios usar
-    const exercisesToUse = databaseConnected && databaseExercises.length > 0 
-      ? databaseExercises 
-      : exercises.map(ex => convertToMySQLExercise(ex));
-    
-    // Asignar ejercicios para cada día según el área de enfoque
-    selectedDays.forEach((day, index) => {
-      const dayNumber = (index + 1).toString();
-      const focus = focusAreas[dayNumber] || "Full Body";
-      let targetMuscles: string[] = [];
+    setIsLoading(true);
+    try {
+      const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+      const selectedDays = weekDays.slice(0, days);
       
-      // Determinar los grupos musculares objetivo según el enfoque
-      if (focus === "Pecho y Tríceps") {
-        targetMuscles = ["Pecho", "Tríceps", "Hombros"];
-      } else if (focus === "Espalda y Bíceps") {
-        targetMuscles = ["Espalda", "Bíceps", "Antebrazos"];
-      } else if (focus === "Piernas y Hombros") {
-        targetMuscles = ["Cuádriceps", "Glúteos", "Isquiotibiales", "Hombros"];
-      } else if (focus === "Core y Cardio") {
-        targetMuscles = ["Abdominales", "Core", "Full body"];
-      } else {
-        // Para "Full Body" o cualquier otro enfoque no especificado
-        targetMuscles = ["Pecho", "Espalda", "Hombros", "Tríceps", "Bíceps", "Abdominales", "Cuádriceps", "Glúteos"];
-      }
+      const routineData: DayExercises = {};
       
-      // Filtrar ejercicios que coincidan con los grupos musculares objetivo
-      let dayExercises = exercisesToUse.filter(ex => 
-        ex.muscleGroups.some(mg => targetMuscles.includes(mg))
-      );
+      // Determinar qué conjunto de ejercicios usar
+      const exercisesToUse = databaseConnected && databaseExercises.length > 0 
+        ? databaseExercises 
+        : exercises.map(ex => convertToMySQLExercise(ex));
       
-      // Si no hay suficientes ejercicios, añadir algunos genéricos
-      if (dayExercises.length < 3) {
-        const genericExercises = exercisesToUse.filter(ex => !dayExercises.includes(ex));
-        dayExercises = [...dayExercises, ...genericExercises.slice(0, 3 - dayExercises.length)];
-      }
-      
-      // Limitar a 4-6 ejercicios por día
-      dayExercises = dayExercises.slice(0, 5);
-      
-      routineData[day] = dayExercises;
-    });
-    
-    // Construir un objeto con los datos de la rutina
-    const routineName = "Mi Rutina Semanal";
-    const weeklyRoutineData = {
-      name: routineName,
-      days: days,
-      dayNames: selectedDays,
-      focusAreas: focusAreas,
-      exercises: routineData
-    };
-    
-    // Guardar la rutina en localStorage
-    localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
-    
-    // Si estamos conectados a la base de datos, guardar también en MySQL
-    if (databaseConnected) {
-      try {
-        const routineToSave = {
-          name: routineName,
-          objetivo: "personalizada",
-          nivel: "personalizada", 
-          equipamiento: "personalizada",
-          dias: days,
-          exercises: routineData
-        };
+      // Asignar ejercicios para cada día según el área de enfoque
+      selectedDays.forEach((day, index) => {
+        const dayNumber = (index + 1).toString();
+        const focus = focusAreas[dayNumber] || "Full Body";
+        let targetMuscles: string[] = [];
         
-        // Use the saveRoutine method specifically
-        await mysqlConnection.saveRoutine(routineToSave);
+        // Determinar los grupos musculares objetivo según el enfoque
+        if (focus === "Pecho y Tríceps") {
+          targetMuscles = ["Pecho", "Tríceps", "Hombros"];
+        } else if (focus === "Espalda y Bíceps") {
+          targetMuscles = ["Espalda", "Bíceps", "Antebrazos"];
+        } else if (focus === "Piernas y Hombros") {
+          targetMuscles = ["Cuádriceps", "Glúteos", "Isquiotibiales", "Hombros"];
+        } else if (focus === "Core y Cardio") {
+          targetMuscles = ["Abdominales", "Core", "Full body"];
+        } else {
+          // Para "Full Body" o cualquier otro enfoque no especificado
+          targetMuscles = ["Pecho", "Espalda", "Hombros", "Tríceps", "Bíceps", "Abdominales", "Cuádriceps", "Glúteos"];
+        }
         
-        // Update statistics - a new routine was created
-        statsManager.addRoutineCompleted();
-        
-        toast({
-          title: "¡Rutina guardada en MySQL!",
-          description: `Tu rutina de ${days} días ha sido guardada en la base de datos`,
-          action: <Database className="h-4 w-4 text-green-500" />,
+        // Filtrar ejercicios que coincidan con los grupos musculares objetivo
+        let dayExercises = exercisesToUse.filter(ex => {
+          if (!ex.muscleGroups) return false;
+          const muscleGroups = Array.isArray(ex.muscleGroups) ? ex.muscleGroups : [ex.muscleGroups];
+          return muscleGroups.some(mg => targetMuscles.includes(mg));
         });
         
-        // Update current routines in localStorage to ensure it appears in Mis Rutinas
-        const existingRoutines = await mysqlConnection.getRoutines();
-        if (existingRoutines.length > 0) {
-          // Store in localStorage for immediate access in MiRutina page
-          localStorage.setItem('app_routines', JSON.stringify(existingRoutines));
+        // Si no hay suficientes ejercicios, añadir algunos genéricos
+        if (dayExercises.length < 3) {
+          const genericExercises = exercisesToUse.filter(ex => !dayExercises.includes(ex));
+          dayExercises = [...dayExercises, ...genericExercises.slice(0, 3 - dayExercises.length)];
         }
-      } catch (err) {
-        console.error("Error al guardar rutina en MySQL:", err);
+        
+        // Limitar a 4-6 ejercicios por día
+        dayExercises = dayExercises.slice(0, 5);
+        
+        routineData[day] = dayExercises;
+      });
+      
+      // Construir un objeto con los datos de la rutina
+      const routineName = "Mi Rutina Semanal";
+      const weeklyRoutineData = {
+        name: routineName,
+        days: days,
+        dayNames: selectedDays,
+        focusAreas: focusAreas,
+        exercises: routineData
+      };
+      
+      // Guardar la rutina en localStorage
+      localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
+      
+      // Si estamos conectados a la base de datos, guardar también en MySQL
+      if (databaseConnected) {
+        try {
+          const routineToSave: Routine = {
+            id: `routine-${Date.now()}`, // Generar un ID único
+            name: routineName,
+            objetivo: "personalizada",
+            nivel: "personalizada", 
+            equipamiento: "personalizada",
+            dias: days,
+            exercises: routineData,
+            createdAt: new Date().toISOString()
+          };
+          
+          // Primero obtenemos las rutinas existentes
+          const existingRoutines = await mysqlConnection.getRoutines();
+          
+          // Añadimos la nueva rutina y guardamos toda la colección
+          const updatedRoutines = [...existingRoutines, routineToSave];
+          const saveResult = await mysqlConnection.saveRoutines(updatedRoutines);
+          
+          if (saveResult) {
+            // Update statistics - a new routine was created
+            statsManager.addRoutineCompleted();
+            
+            // Store updated routines in localStorage for immediate access in MiRutina page
+            localStorage.setItem('app_routines', JSON.stringify(updatedRoutines));
+            
+            toast({
+              title: "¡Rutina guardada en MySQL!",
+              description: `Tu rutina de ${days} días ha sido guardada en la base de datos`,
+            });
+          } else {
+            throw new Error("Error al guardar la rutina");
+          }
+        } catch (err) {
+          console.error("Error al guardar rutina en MySQL:", err);
+          toast({
+            variant: "destructive",
+            title: "Error al guardar",
+            description: "No se pudo guardar la rutina en la base de datos",
+          });
+        }
       }
+      
+      // Mostrar notificación
+      toast({
+        title: "¡Rutina semanal creada!",
+        description: `Tu rutina de ${days} días ha sido creada exitosamente`,
+      });
+      
+      // Cerrar diálogo y navegar a la página de rutina
+      onClose();
+      navigate('/mi-rutina', { state: { weeklyRoutine: true } });
+    } catch (err) {
+      console.error("Error al crear rutina:", err);
+      toast({
+        variant: "destructive",
+        title: "Error al crear rutina",
+        description: "Ocurrió un error al generar tu rutina",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
-    // Mostrar notificación
-    toast({
-      title: "¡Rutina semanal creada!",
-      description: `Tu rutina de ${days} días ha sido creada exitosamente`,
-      action: <Check className="h-4 w-4 text-green-500" />,
-    });
-    
-    // Cerrar diálogo y navegar a la página de rutina
-    onClose();
-    navigate('/mi-rutina', { state: { weeklyRoutine: true } });
   };
 
   // Helper function to convert from data/equipmentData Exercise to utils/mysqlConnection Exercise
@@ -277,8 +308,14 @@ export function CreateWeeklyRoutineDialog({
           <Button 
             onClick={createAutomaticRoutine}
             className="gradient-btn"
+            disabled={isLoading}
           >
-            {databaseConnected && databaseExercises.length > 0 ? (
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Creando rutina...
+              </>
+            ) : databaseConnected && databaseExercises.length > 0 ? (
               <>
                 <Database className="mr-2 h-4 w-4" />
                 Crear Rutina con datos MySQL
