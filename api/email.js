@@ -7,6 +7,14 @@ const logger = createLogger('email');
 async function testEmailConnection(config) {
   try {
     // Create transporter
+    logger.info(`Testing SMTP connection to ${config.smtpHost}:${config.smtpPort}`);
+    
+    // Handle secure connection settings
+    const secureType = (config.secureType || 'TLS').toUpperCase();
+    const useSecure = config.secure === 'true' || config.secure === true;
+    
+    logger.info(`Email secure: ${useSecure}, type: ${secureType}`);
+    
     const transporter = createTransporter(config);
     
     // Verify connection
@@ -16,13 +24,24 @@ async function testEmailConnection(config) {
     return { success: true };
   } catch (error) {
     logger.error('SMTP connection test failed:', error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error.message,
+      details: {
+        host: config.smtpHost,
+        port: config.smtpPort,
+        user: config.smtpUser,
+        secure: config.secure,
+        secureType: config.secureType
+      }
+    };
   }
 }
 
 async function sendEmail(config, to, subject, body) {
   try {
     // Create transporter
+    logger.info(`Sending email to ${to} via ${config.smtpHost}:${config.smtpPort}`);
     const transporter = createTransporter(config);
     
     // Setup email data
@@ -47,34 +66,55 @@ async function sendEmail(config, to, subject, body) {
 }
 
 function createTransporter(config) {
-  // Determine security settings
-  let secure = false;
-  let secureConnection = false;
-  let tls = {};
+  // Convert string 'true'/'false' to boolean if needed
+  const secure = config.secure === 'true' || config.secure === true;
+  const secureType = (config.secureType || 'TLS').toUpperCase();
   
-  if (config.secure) {
-    if (config.secureType === 'SSL') {
-      secureConnection = true;
-      tls = {
-        rejectUnauthorized: true
-      };
-    } else { // TLS
-      secure = true;
-    }
-  }
-  
-  // Create transporter
-  return nodemailer.createTransport({
+  let transporterOptions = {
     host: config.smtpHost,
-    port: config.smtpPort,
-    secure: secure, // true for 465, false for other ports
-    secureConnection: secureConnection, // SSL
+    port: parseInt(config.smtpPort || '587'),
     auth: {
       user: config.smtpUser,
       pass: config.smtpPassword
     },
-    tls: tls
-  });
+    debug: true, // Enable debug output
+    logger: true  // Log information to the console
+  };
+  
+  if (secure) {
+    if (secureType === 'SSL') {
+      // SSL configuration (legacy)
+      transporterOptions.secure = false;
+      transporterOptions.tls = {
+        rejectUnauthorized: false
+      };
+      transporterOptions.secureConnection = true;
+    } else {
+      // TLS configuration (modern)
+      transporterOptions.secure = true;
+      transporterOptions.tls = {
+        rejectUnauthorized: false
+      };
+    }
+  } else {
+    // Non-secure configuration
+    transporterOptions.secure = false;
+    transporterOptions.tls = {
+      rejectUnauthorized: false
+    };
+  }
+  
+  logger.info(`Creating email transporter with options: ${JSON.stringify({
+    host: transporterOptions.host,
+    port: transporterOptions.port,
+    secure: transporterOptions.secure,
+    secureConnection: transporterOptions.secureConnection,
+    user: transporterOptions.auth.user,
+    tls: transporterOptions.tls
+  })}`);
+  
+  // Create transporter
+  return nodemailer.createTransport(transporterOptions);
 }
 
 export { testEmailConnection, sendEmail };

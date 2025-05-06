@@ -1,4 +1,3 @@
-
 /**
  * Environment variable manager for the application
  * Loads variables from the server API or uses localStorage as fallback
@@ -33,10 +32,17 @@ class EnvManager {
   private initialized: boolean = false;
   private initializing: boolean = false;
   private initPromise: Promise<void> | null = null;
+  private lastFetchTime: number = 0;
+  private refreshInterval: number = 60000; // 1 minute
   
   private constructor() {
     this.loadFromStorage();
     this.initPromise = this.initialize();
+    
+    // Set up periodic refresh
+    setInterval(() => {
+      this.refreshIfNeeded();
+    }, this.refreshInterval);
   }
   
   public static getInstance(): EnvManager {
@@ -44,6 +50,14 @@ class EnvManager {
       EnvManager.instance = new EnvManager();
     }
     return EnvManager.instance;
+  }
+  
+  private async refreshIfNeeded(): Promise<void> {
+    const now = Date.now();
+    if (now - this.lastFetchTime > this.refreshInterval) {
+      console.log('Auto-refreshing environment variables');
+      this.refresh().catch(console.error);
+    }
   }
   
   private async initialize(): Promise<void> {
@@ -64,6 +78,7 @@ class EnvManager {
         // Merge with existing variables, prioritizing server values
         this.variables = { ...this.variables, ...data.env };
         this.saveToStorage();
+        this.lastFetchTime = Date.now();
         
         // Check if we need to update password fields from localStorage
         const storedVars = localStorage.getItem('env_variables');
@@ -141,6 +156,27 @@ class EnvManager {
     this.variables = { ...this.variables, [key]: value };
     this.saveToStorage();
     this.applyVariable(key, value);
+    
+    // Also send to server if possible
+    this.sendToServer({ [key]: value }).catch(console.error);
+  }
+  
+  private async sendToServer(envVars: Record<string, string>): Promise<void> {
+    try {
+      const response = await fetch('/api/env/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ env: envVars })
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      console.log('Environment variables updated on server');
+    } catch (err) {
+      console.warn('Could not update environment variables on server:', err);
+    }
   }
   
   public getAll(): EnvVariables {
@@ -151,6 +187,9 @@ class EnvManager {
     this.variables = { ...variables };
     this.saveToStorage();
     this.applyVariables();
+    
+    // Also send to server if possible
+    this.sendToServer(variables).catch(console.error);
   }
   
   private saveToStorage(): void {
@@ -234,7 +273,36 @@ class EnvManager {
   public async refresh(): Promise<void> {
     this.initialized = false;
     this.initializing = false;
-    return this.initialize();
+    
+    try {
+      const response = await fetch('/api/env');
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success && data.env) {
+        console.log('Environment variables refreshed from server API');
+        
+        // Keep passwords from current variables
+        const passwords = {
+          MYSQL_PASSWORD: this.variables.MYSQL_PASSWORD,
+          SMTP_PASSWORD: this.variables.SMTP_PASSWORD
+        };
+        
+        // Merge with existing variables, prioritizing server values
+        this.variables = { ...this.variables, ...data.env, ...passwords };
+        this.saveToStorage();
+        this.lastFetchTime = Date.now();
+      }
+      
+      this.applyVariables();
+      this.initialized = true;
+      return Promise.resolve();
+    } catch (err) {
+      console.warn('Could not refresh environment variables from server API:', err);
+      return this.initialize();
+    }
   }
 }
 

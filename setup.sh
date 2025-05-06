@@ -70,12 +70,44 @@ if [[ $USE_SECURE == "y" || $USE_SECURE == "yes" ]]; then
     SMTP_SECURE="true"
     read -p "Secure type (SSL/TLS, default: TLS): " SECURE_TYPE
     SECURE_TYPE=$(echo $SECURE_TYPE | tr '[:lower:]' '[:upper:]')
-    if [[ $SECURE_TYPE != "SSL" ]]; then
+    if [[ $SECURE_TYPE != "SSL" && $SECURE_TYPE != "TLS" ]]; then
         SECURE_TYPE="TLS"
     fi
 else
     SMTP_SECURE="false"
     SECURE_TYPE="TLS"
+fi
+
+# Test MySQL connection & SMTP if we're on a system with those tools
+echo -e "\n${YELLOW}Would you like to test connections before saving? (y/n, default: y): ${NC}"
+read TEST_CONNECTIONS
+TEST_CONNECTIONS=${TEST_CONNECTIONS:-y}
+TEST_CONNECTIONS=$(echo $TEST_CONNECTIONS | tr '[:upper:]' '[:lower:]')
+
+if [[ $TEST_CONNECTIONS == "y" || $TEST_CONNECTIONS == "yes" ]]; then
+    # Test MySQL connection if mysql client is available
+    if command -v mysql &> /dev/null; then
+        echo -e "\n${YELLOW}Testing MySQL connection...${NC}"
+        if mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SELECT 1" &> /dev/null; then
+            echo -e "${GREEN}MySQL connection successful!${NC}"
+        else
+            echo -e "${RED}MySQL connection failed. Please check your credentials.${NC}"
+            read -p "Would you like to continue anyway? (y/n): " CONTINUE
+            if [[ $CONTINUE != "y" && $CONTINUE != "Y" ]]; then
+                echo -e "${RED}Setup aborted.${NC}"
+                exit 1
+            fi
+        fi
+    else
+        echo -e "${YELLOW}MySQL client not found. Skipping connection test.${NC}"
+    fi
+    
+    # Test SMTP connection if curl is available
+    if command -v curl &> /dev/null; then
+        echo -e "\n${YELLOW}Testing SMTP connection...${NC}"
+        # We can't really test SMTP with basic tools, so just inform the user
+        echo -e "${YELLOW}SMTP will be tested later during application startup.${NC}"
+    fi
 fi
 
 # User Profile Configuration
@@ -93,7 +125,7 @@ if command -v mysql &> /dev/null; then
         # Check if database exists
         if ! mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "USE $MYSQL_DATABASE" &> /dev/null; then
             echo -e "${YELLOW}Database '$MYSQL_DATABASE' does not exist. Creating it...${NC}"
-            mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "CREATE DATABASE $MYSQL_DATABASE"
+            mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "CREATE DATABASE $MYSQL_DATABASE CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci"
             if [ $? -eq 0 ]; then
                 echo -e "${GREEN}Database created successfully.${NC}"
             else
@@ -102,28 +134,33 @@ if command -v mysql &> /dev/null; then
         else
             echo -e "${GREEN}Database '$MYSQL_DATABASE' already exists.${NC}"
             
-            # Drop all tables in the database for a clean install
-            echo -e "${YELLOW}Clearing existing database tables for a clean installation...${NC}"
-            TABLES=$(mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -s -N -e "SHOW TABLES FROM $MYSQL_DATABASE;")
+            # Ask if we should wipe the database for a clean installation
+            read -p "Do you want to clear the database for a clean installation? (y/n, default: n): " CLEAR_DB
+            CLEAR_DB=$(echo $CLEAR_DB | tr '[:upper:]' '[:lower:]')
             
-            if [ -n "$TABLES" ]; then
-                echo -e "${YELLOW}Dropping existing tables...${NC}"
+            if [[ $CLEAR_DB == "y" || $CLEAR_DB == "yes" ]]; then
+                echo -e "${YELLOW}Clearing existing database tables for a clean installation...${NC}"
+                TABLES=$(mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -s -N -e "SHOW TABLES FROM $MYSQL_DATABASE;")
                 
-                # Disable foreign key checks temporarily
-                mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SET FOREIGN_KEY_CHECKS = 0;" $MYSQL_DATABASE
-                
-                # Drop each table
-                for table in $TABLES; do
-                    echo -e "Dropping table: $table"
-                    mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "DROP TABLE IF EXISTS \`$table\`;" $MYSQL_DATABASE
-                done
-                
-                # Re-enable foreign key checks
-                mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SET FOREIGN_KEY_CHECKS = 1;" $MYSQL_DATABASE
-                
-                echo -e "${GREEN}All tables dropped successfully.${NC}"
-            else
-                echo -e "${GREEN}No existing tables found. Database is already clean.${NC}"
+                if [ -n "$TABLES" ]; then
+                    echo -e "${YELLOW}Dropping existing tables...${NC}"
+                    
+                    # Disable foreign key checks temporarily
+                    mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SET FOREIGN_KEY_CHECKS = 0;" $MYSQL_DATABASE
+                    
+                    # Drop each table
+                    for table in $TABLES; do
+                        echo -e "Dropping table: $table"
+                        mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "DROP TABLE IF EXISTS \`$table\`;" $MYSQL_DATABASE
+                    done
+                    
+                    # Re-enable foreign key checks
+                    mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SET FOREIGN_KEY_CHECKS = 1;" $MYSQL_DATABASE
+                    
+                    echo -e "${GREEN}All tables dropped successfully.${NC}"
+                else
+                    echo -e "${GREEN}No existing tables found. Database is already clean.${NC}"
+                fi
             fi
         fi
     else

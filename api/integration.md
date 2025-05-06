@@ -73,6 +73,35 @@ En producción, la aplicación:
 3. Sirve la aplicación web desde una única instalación
 4. Sincroniza todas las estadísticas con la base de datos en tiempo real
 
+## Configuración de Email (SSL/TLS)
+
+La aplicación soporta diferentes configuraciones de seguridad para el envío de emails:
+
+1. **Sin cifrado**: Utiliza el puerto 25 o 587 sin SSL/TLS (no recomendado)
+2. **TLS**: Utiliza el puerto 587 con cifrado TLS (recomendado)
+3. **SSL**: Utiliza el puerto 465 con cifrado SSL (para servidores antiguos)
+
+Si tienes problemas de conexión con tu servidor SMTP, puedes probar las siguientes configuraciones:
+
+- Para Gmail:
+  - Host: smtp.gmail.com
+  - Puerto: 587
+  - Secure: true
+  - SecureType: TLS
+  - Nota: Es posible que necesites habilitar "Acceso de aplicaciones menos seguras" o usar una contraseña de aplicación.
+
+- Para Zoho:
+  - Host: smtp.zoho.eu (o smtp.zoho.com)
+  - Puerto: 587
+  - Secure: true
+  - SecureType: TLS
+
+- Para servidores cPanel:
+  - Host: mail.tudominio.com
+  - Puerto: 587 o 465
+  - Secure: true
+  - SecureType: TLS (para 587) o SSL (para 465)
+
 ## Variables de Entorno
 
 La aplicación utiliza un archivo `.env` para la configuración. Las variables más importantes son:
@@ -108,6 +137,19 @@ Los logs se almacenan en la carpeta `api/logs`:
 - `server.log`: Logs generales del servidor
 
 Si encuentras problemas, revisa estos archivos para obtener más información.
+
+### Problemas comunes con SMTP
+
+Si obtienes errores como:
+- `ESOCKET: wrong version number`
+- `ETIMEDOUT: Connection timed out`
+
+Prueba estas soluciones:
+1. Cambia entre TLS y SSL (dependiendo del servidor)
+2. Verifica que el puerto sea correcto (587 para TLS, 465 para SSL)
+3. Asegúrate de que tu proveedor de email permita el acceso SMTP
+4. Verifica que tu servidor o firewall no esté bloqueando las conexiones SMTP
+5. Si usas Gmail, habilita el acceso de aplicaciones menos seguras o crea una contraseña de aplicación
 
 ## Ejecución con PM2 (recomendado para producción)
 

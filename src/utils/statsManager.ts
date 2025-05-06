@@ -1,4 +1,3 @@
-
 import { mysqlConnection } from "./mysqlConnection";
 
 export interface UserStats {
@@ -42,7 +41,7 @@ class StatsManager {
     return StatsManager.instance;
   }
   
-  private async syncWithDatabase(): Promise<void> {
+  public async syncWithDatabase(): Promise<void> {
     if (!this.currentStats || !mysqlConnection.isConnected()) return;
     
     try {
@@ -139,8 +138,6 @@ class StatsManager {
       console.error("Error saving stats to storage:", err);
     }
   }
-  
-  // Public methods to update stats
   
   public addCaloriesBurned(calories: number): void {
     if (!this.currentStats) return;

@@ -1,4 +1,3 @@
-
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -193,6 +192,96 @@ app.get('/api/env', (req, res) => {
     res.json({ success: true, env: safeEnv });
   } catch (error) {
     logger.error('Error getting environment variables:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Add an endpoint to update environment variables
+app.post('/api/env/update', (req, res) => {
+  try {
+    const { env } = req.body;
+    
+    if (!env || typeof env !== 'object') {
+      return res.status(400).json({ 
+        success: false, 
+        error: 'Invalid environment variables format' 
+      });
+    }
+    
+    // Update the .env file
+    const envPath = path.resolve(process.cwd(), '.env');
+    let envContent = '';
+    
+    if (fs.existsSync(envPath)) {
+      envContent = fs.readFileSync(envPath, 'utf8');
+    }
+    
+    // Parse existing env content into a map
+    const envMap = {};
+    envContent.split('\n').forEach(line => {
+      if (line.trim() === '' || line.startsWith('#')) return;
+      
+      const match = line.match(/^\s*([A-Za-z0-9_]+)\s*=\s*"?([^"]*)"?\s*$/);
+      if (match) {
+        const [, key, value] = match;
+        envMap[key] = value;
+      }
+    });
+    
+    // Update with new values
+    Object.entries(env).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        envMap[key] = value;
+      }
+    });
+    
+    // Generate new .env content
+    let newEnvContent = '# Environment Variables for GymFlow\n# Updated on ' + new Date().toISOString() + '\n\n';
+    
+    Object.entries(envMap).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        // Escape any quotes in the value
+        const escapedValue = String(value).replace(/"/g, '\\"');
+        newEnvContent += `${key}="${escapedValue}"\n`;
+      }
+    });
+    
+    // Write the updated .env file
+    fs.writeFileSync(envPath, newEnvContent);
+    
+    // Update process.env with new values
+    Object.entries(env).forEach(([key, value]) => {
+      if (value !== undefined && value !== null) {
+        process.env[key] = String(value);
+      }
+    });
+    
+    logger.info('Environment variables updated from frontend');
+    
+    res.json({ success: true });
+  } catch (error) {
+    logger.error('Error updating environment variables:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Add stats endpoints
+app.post('/api/mysql/save-user-stats', async (req, res) => {
+  try {
+    const result = await mysql.saveUserStats(req.body.config, req.body.stats);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error saving user stats:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/mysql/get-user-stats', async (req, res) => {
+  try {
+    const result = await mysql.getUserStats(req.body.config, req.body.email);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error getting user stats:', error);
     res.json({ success: false, error: error.message });
   }
 });
