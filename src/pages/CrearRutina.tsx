@@ -1,0 +1,219 @@
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { Dumbbell, ArrowRight, CheckCircle } from 'lucide-react';
+import { useToast } from '../hooks/use-toast';
+
+const objetivos = [
+  { id: 'fuerza', name: 'Fuerza', description: 'Aumentar tu fuerza y potencia muscular' },
+  { id: 'volumen', name: 'Volumen', description: 'Ganar masa muscular y tamaño' },
+  { id: 'definicion', name: 'Definición', description: 'Reducir grasa y marcar la musculatura' },
+  { id: 'resistencia', name: 'Resistencia', description: 'Mejorar tu rendimiento y resistencia' }
+];
+
+const niveles = [
+  { id: 'principiante', name: 'Principiante' },
+  { id: 'intermedio', name: 'Intermedio' },
+  { id: 'avanzado', name: 'Avanzado' }
+];
+
+const equipamientos = [
+  { id: 'casa', name: 'En casa (mínimo equipamiento)' },
+  { id: 'basico', name: 'Equipo básico (mancuernas, barras)' },
+  { id: 'completo', name: 'Gimnasio completo' }
+];
+
+const CrearRutina = () => {
+  const navigate = useNavigate();
+  const { toast } = useToast();
+  
+  const [formData, setFormData] = useState({
+    objetivo: '',
+    nivel: '',
+    dias: 3,
+    equipamiento: '',
+  });
+
+  const handleSelectObjetivo = (objetivo: string) => {
+    setFormData({ ...formData, objetivo });
+  };
+
+  const handleSelectNivel = (nivel: string) => {
+    setFormData({ ...formData, nivel });
+  };
+
+  const handleSelectEquipamiento = (equipamiento: string) => {
+    setFormData({ ...formData, equipamiento });
+  };
+
+  const handleDiasChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const dias = parseInt(e.target.value);
+    setFormData({ ...formData, dias });
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    // Validación básica
+    if (!formData.objetivo || !formData.nivel || !formData.equipamiento) {
+      toast({
+        variant: "destructive",
+        title: "Error en el formulario",
+        description: "Por favor completa todos los campos",
+      });
+      return;
+    }
+    
+    // Aquí iría la lógica para generar la rutina basada en los datos
+    console.log('Datos enviados:', formData);
+    
+    // Simulando generación de rutina
+    toast({
+      title: "¡Rutina creada!",
+      description: "Tu rutina personalizada está lista",
+    });
+    
+    // Redireccionar a la página de rutina
+    navigate('/mi-rutina', { state: { formData } });
+  };
+
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-3xl mx-auto">
+        <h1 className="text-3xl font-bold mb-2 gradient-text">Crear Rutina Personalizada</h1>
+        <p className="text-gray-600 mb-8">Completa la información para generar tu rutina perfecta</p>
+        
+        <form onSubmit={handleSubmit} className="space-y-8">
+          {/* Sección Objetivo */}
+          <div className="glass-card rounded-xl p-6 animate-fadeInUp">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="bg-purple-100 text-purple-700 w-7 h-7 rounded-full flex items-center justify-center mr-3">1</span>
+              Selecciona tu objetivo principal
+            </h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {objetivos.map((objetivo) => (
+                <div 
+                  key={objetivo.id}
+                  className={`relative p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    formData.objetivo === objetivo.id 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-purple-300'
+                  }`}
+                  onClick={() => handleSelectObjetivo(objetivo.id)}
+                >
+                  {formData.objetivo === objetivo.id && (
+                    <CheckCircle className="absolute top-3 right-3 w-5 h-5 text-purple-600" />
+                  )}
+                  <h3 className="font-semibold">{objetivo.name}</h3>
+                  <p className="text-gray-500 text-sm">{objetivo.description}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Sección Nivel */}
+          <div className="glass-card rounded-xl p-6 animate-fadeInUp animate-delay-100">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="bg-purple-100 text-purple-700 w-7 h-7 rounded-full flex items-center justify-center mr-3">2</span>
+              ¿Cuál es tu nivel de experiencia?
+            </h2>
+            
+            <div className="flex flex-wrap gap-4">
+              {niveles.map((nivel) => (
+                <button
+                  key={nivel.id}
+                  type="button"
+                  className={`px-5 py-2 rounded-full border-2 transition-all ${
+                    formData.nivel === nivel.id 
+                      ? 'bg-purple-100 border-purple-500 text-purple-800' 
+                      : 'border-gray-200 hover:border-purple-300'
+                  }`}
+                  onClick={() => handleSelectNivel(nivel.id)}
+                >
+                  {nivel.name}
+                </button>
+              ))}
+            </div>
+          </div>
+          
+          {/* Sección Días */}
+          <div className="glass-card rounded-xl p-6 animate-fadeInUp animate-delay-200">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="bg-purple-100 text-purple-700 w-7 h-7 rounded-full flex items-center justify-center mr-3">3</span>
+              ¿Cuántos días puedes entrenar a la semana?
+            </h2>
+            
+            <div className="flex flex-col items-center">
+              <span className="text-4xl font-bold text-purple-600 mb-2">{formData.dias}</span>
+              <input
+                type="range"
+                min="2"
+                max="6"
+                step="1"
+                value={formData.dias}
+                onChange={handleDiasChange}
+                className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              />
+              <div className="w-full flex justify-between mt-2 px-1 text-sm text-gray-500">
+                <span>2</span>
+                <span>3</span>
+                <span>4</span>
+                <span>5</span>
+                <span>6</span>
+              </div>
+            </div>
+          </div>
+          
+          {/* Sección Equipamiento */}
+          <div className="glass-card rounded-xl p-6 animate-fadeInUp animate-delay-300">
+            <h2 className="text-xl font-semibold mb-4 flex items-center">
+              <span className="bg-purple-100 text-purple-700 w-7 h-7 rounded-full flex items-center justify-center mr-3">4</span>
+              ¿Qué equipamiento tienes disponible?
+            </h2>
+            
+            <div className="space-y-3">
+              {equipamientos.map((equipo) => (
+                <div
+                  key={equipo.id}
+                  className={`p-4 border-2 rounded-lg cursor-pointer transition-all ${
+                    formData.equipamiento === equipo.id 
+                      ? 'border-purple-500 bg-purple-50' 
+                      : 'border-gray-200 hover:border-purple-300'
+                  }`}
+                  onClick={() => handleSelectEquipamiento(equipo.id)}
+                >
+                  <div className="flex items-center">
+                    <div className={`w-5 h-5 rounded-full border-2 mr-3 flex items-center justify-center ${
+                      formData.equipamiento === equipo.id 
+                        ? 'border-purple-600 bg-purple-600' 
+                        : 'border-gray-400'
+                    }`}>
+                      {formData.equipamiento === equipo.id && (
+                        <div className="w-2 h-2 bg-white rounded-full"></div>
+                      )}
+                    </div>
+                    <span className="font-medium">{equipo.name}</span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+          
+          {/* Botón de envío */}
+          <div className="flex justify-center">
+            <button
+              type="submit"
+              className="gradient-btn px-8 py-3 text-lg flex items-center"
+            >
+              Generar Mi Rutina
+              <Dumbbell className="ml-2 h-5 w-5" />
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+};
+
+export default CrearRutina;

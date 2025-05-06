@@ -1,0 +1,230 @@
+
+import { useState } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell } from 'lucide-react';
+import { useToast } from '../hooks/use-toast';
+
+// Mock data para ejercicios
+const mockExercises = {
+  fuerza: {
+    principiante: {
+      casa: [
+        {day: 'Día 1', focus: 'Tren Superior', exercises: [
+          {name: 'Flexiones', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Mantén el core activo'},
+          {name: 'Fondos en silla', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Hombros alejados de las orejas'},
+          {name: 'Remo con toalla', sets: 3, reps: '10-12', rest: '60 seg', tips: 'Contrae la espalda'},
+          {name: 'Extensiones de tríceps', sets: 3, reps: '12-15', rest: '60 seg', tips: 'Codos cerca de la cabeza'}
+        ]},
+        {day: 'Día 2', focus: 'Tren Inferior', exercises: [
+          {name: 'Sentadillas', sets: 3, reps: '12-15', rest: '90 seg', tips: 'Rodillas en línea con los pies'},
+          {name: 'Estocadas', sets: 3, reps: '10 por pierna', rest: '60 seg', tips: 'Mantén la espalda recta'},
+          {name: 'Puente de glúteos', sets: 3, reps: '15-20', rest: '60 seg', tips: 'Aprieta los glúteos al subir'},
+          {name: 'Elevaciones de pantorrilla', sets: 3, reps: '20-25', rest: '30 seg', tips: 'Extiende completamente'}
+        ]},
+        {day: 'Día 3', focus: 'Full Body', exercises: [
+          {name: 'Burpees', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Mantén un ritmo constante'},
+          {name: 'Mountain Climbers', sets: 3, reps: '20 por pierna', rest: '60 seg', tips: 'Core estable'},
+          {name: 'Superman', sets: 3, reps: '12-15', rest: '60 seg', tips: 'Eleva brazos y piernas'},
+          {name: 'Plancha', sets: 3, reps: '30-45 seg', rest: '60 seg', tips: 'Alineación desde cabeza a talones'}
+        ]}
+      ]
+    },
+    intermedio: {
+      basico: [
+        {day: 'Día 1', focus: 'Pecho y Tríceps', exercises: []},
+        {day: 'Día 2', focus: 'Espalda y Bíceps', exercises: []},
+        {day: 'Día 3', focus: 'Piernas y Hombros', exercises: []}
+      ]
+    }
+  },
+  volumen: {
+    principiante: {
+      casa: [
+        {day: 'Día 1', focus: 'Pecho y Brazos', exercises: []},
+        {day: 'Día 2', focus: 'Piernas y Core', exercises: []},
+        {day: 'Día 3', focus: 'Espalda y Hombros', exercises: []}
+      ]
+    }
+  },
+  definicion: {
+    principiante: {
+      casa: [
+        {day: 'Día 1', focus: 'Full Body + HIIT', exercises: []},
+        {day: 'Día 2', focus: 'Cardio y Core', exercises: []},
+        {day: 'Día 3', focus: 'Full Body Circuito', exercises: []}
+      ]
+    }
+  }
+};
+
+const MiRutina = () => {
+  const location = useLocation();
+  const { toast } = useToast();
+  const [activeDay, setActiveDay] = useState(0);
+  
+  // Intentar obtener datos del formulario o usar valores por defecto
+  const formData = location.state?.formData || {
+    objetivo: 'fuerza',
+    nivel: 'principiante',
+    dias: 3,
+    equipamiento: 'casa'
+  };
+  
+  // Obtener rutina basada en los datos del formulario
+  const rutina = mockExercises[formData.objetivo]?.[formData.nivel]?.[formData.equipamiento] || [];
+  
+  // Manejar la descarga de la rutina
+  const handleDownload = () => {
+    toast({
+      title: "Descarga iniciada",
+      description: "Tu rutina se está descargando como PDF",
+    });
+    
+    // Aquí iría la lógica real de generación del PDF
+    console.log('Descargando rutina:', formData);
+  };
+  
+  // Si no hay rutina disponible
+  if (rutina.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-12 text-center">
+        <div className="glass-card rounded-xl p-8 max-w-2xl mx-auto">
+          <h1 className="text-2xl font-bold mb-4">No hay rutina disponible</h1>
+          <p className="text-gray-600 mb-6">
+            No se encontró una rutina para la combinación seleccionada. Por favor, crea una nueva rutina.
+          </p>
+          <a 
+            href="/crear-rutina" 
+            className="gradient-btn px-6 py-2 inline-flex items-center"
+          >
+            Crear Nueva Rutina
+            <Dumbbell className="ml-2 h-5 w-5" />
+          </a>
+        </div>
+      </div>
+    );
+  }
+  
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold gradient-text flex items-center">
+          <Activity className="mr-3 h-7 w-7" />
+          Mi Rutina
+        </h1>
+        
+        <button 
+          onClick={handleDownload}
+          className="gradient-btn px-4 py-2 flex items-center text-sm"
+        >
+          <Download className="mr-2 h-4 w-4" />
+          Descargar PDF
+        </button>
+      </div>
+      
+      {/* Resumen de la rutina */}
+      <div className="glass-card rounded-xl p-6 mb-8 animate-fadeInUp">
+        <h2 className="text-xl font-semibold mb-4">Resumen de tu rutina</h2>
+        
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+            <div className="flex items-center mb-2">
+              <BarChart3 className="text-purple-600 h-5 w-5 mr-2" />
+              <h3 className="font-medium">Objetivo</h3>
+            </div>
+            <p className="text-gray-700 capitalize">{formData.objetivo}</p>
+          </div>
+          
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+            <div className="flex items-center mb-2">
+              <Activity className="text-blue-600 h-5 w-5 mr-2" />
+              <h3 className="font-medium">Nivel</h3>
+            </div>
+            <p className="text-gray-700 capitalize">{formData.nivel}</p>
+          </div>
+          
+          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+            <div className="flex items-center mb-2">
+              <Calendar className="text-indigo-600 h-5 w-5 mr-2" />
+              <h3 className="font-medium">Frecuencia</h3>
+            </div>
+            <p className="text-gray-700">{formData.dias} días/semana</p>
+          </div>
+          
+          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
+            <div className="flex items-center mb-2">
+              <Dumbbell className="text-pink-600 h-5 w-5 mr-2" />
+              <h3 className="font-medium">Equipo</h3>
+            </div>
+            <p className="text-gray-700 capitalize">{formData.equipamiento}</p>
+          </div>
+        </div>
+      </div>
+      
+      {/* Pestañas de días */}
+      <div className="mb-6 overflow-x-auto">
+        <div className="flex space-x-2 min-w-max">
+          {rutina.map((day, index) => (
+            <button
+              key={index}
+              className={`px-4 py-2 rounded-full transition-all whitespace-nowrap ${
+                activeDay === index 
+                  ? 'bg-purple-600 text-white' 
+                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+              }`}
+              onClick={() => setActiveDay(index)}
+            >
+              {day.day} - {day.focus}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Contenido del día seleccionado */}
+      {rutina[activeDay] && (
+        <div className="glass-card rounded-xl p-6 animate-fadeInUp">
+          <div className="mb-6">
+            <h2 className="text-2xl font-bold mb-1">{rutina[activeDay].day}</h2>
+            <p className="text-purple-600 font-medium">{rutina[activeDay].focus}</p>
+          </div>
+          
+          <div className="space-y-6">
+            {rutina[activeDay].exercises.map((exercise, index) => (
+              <div 
+                key={index}
+                className="border border-gray-100 rounded-lg p-4 bg-white hover:border-purple-200 transition-all"
+              >
+                <h3 className="font-semibold text-lg mb-2">{exercise.name}</h3>
+                
+                <div className="grid grid-cols-3 gap-4 mb-3">
+                  <div>
+                    <p className="text-xs text-gray-500">Series</p>
+                    <p className="font-medium">{exercise.sets}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Repeticiones</p>
+                    <p className="font-medium">{exercise.reps}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-gray-500">Descanso</p>
+                    <p className="font-medium">{exercise.rest}</p>
+                  </div>
+                </div>
+                
+                <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700 flex">
+                  <Info className="text-blue-500 h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+                  <p>{exercise.tips}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Importar el icono Info
+import { Info } from 'lucide-react';
+
+export default MiRutina;
