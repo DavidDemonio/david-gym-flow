@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   Dialog,
   DialogContent,
@@ -13,7 +13,8 @@ import { Exercise } from "../data/equipmentData";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Check } from "lucide-react";
+import { Calendar, Check, Database } from "lucide-react";
+import { mysqlConnection } from "../utils/mysqlConnection";
 
 interface CreateWeeklyRoutineDialogProps {
   exercises: Exercise[];
@@ -41,12 +42,38 @@ export function CreateWeeklyRoutineDialog({
     "5": "Core y Cardio"
   });
   
+  // Comprobar si estamos conectados a MySQL
+  const [databaseConnected, setDatabaseConnected] = useState(false);
+  const [databaseExercises, setDatabaseExercises] = useState<Exercise[]>([]);
+  
+  useEffect(() => {
+    // Comprobar conexión a la base de datos
+    const isConnected = mysqlConnection.isConnected();
+    setDatabaseConnected(isConnected);
+    
+    if (isConnected) {
+      // Cargar ejercicios de la base de datos
+      const loadExercises = async () => {
+        const dbExercises = await mysqlConnection.getExercises();
+        if (dbExercises && dbExercises.length > 0) {
+          setDatabaseExercises(dbExercises);
+          console.log("Ejercicios cargados desde MySQL:", dbExercises.length);
+        }
+      };
+      
+      loadExercises();
+    }
+  }, []);
+  
   // Función para crear rutina automáticamente basada en los grupos musculares
-  const createAutomaticRoutine = () => {
+  const createAutomaticRoutine = async () => {
     const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
     const selectedDays = weekDays.slice(0, days);
     
     const routineData: DayExercises = {};
+    
+    // Determinar qué conjunto de ejercicios usar
+    const exercisesToUse = databaseConnected && databaseExercises.length > 0 ? databaseExercises : exercises;
     
     // Asignar ejercicios para cada día según el área de enfoque
     selectedDays.forEach((day, index) => {
@@ -63,12 +90,21 @@ export function CreateWeeklyRoutineDialog({
         targetMuscles = ["Cuádriceps", "Glúteos", "Isquiotibiales", "Hombros"];
       } else if (focus === "Core y Cardio") {
         targetMuscles = ["Abdominales", "Core", "Full body"];
+      } else {
+        // Para "Full Body" o cualquier otro enfoque no especificado
+        targetMuscles = ["Pecho", "Espalda", "Hombros", "Tríceps", "Bíceps", "Abdominales", "Cuádriceps", "Glúteos"];
       }
       
       // Filtrar ejercicios que coincidan con los grupos musculares objetivo
-      let dayExercises = exercises.filter(ex => 
+      let dayExercises = exercisesToUse.filter(ex => 
         ex.muscleGroups.some(mg => targetMuscles.includes(mg))
       );
+      
+      // Si no hay suficientes ejercicios, añadir algunos genéricos
+      if (dayExercises.length < 3) {
+        const genericExercises = exercisesToUse.filter(ex => !dayExercises.includes(ex));
+        dayExercises = [...dayExercises, ...genericExercises.slice(0, 3 - dayExercises.length)];
+      }
       
       // Limitar a 4-6 ejercicios por día
       dayExercises = dayExercises.slice(0, 5);
@@ -85,8 +121,30 @@ export function CreateWeeklyRoutineDialog({
       exercises: routineData
     };
     
-    // Guardar la rutina (aquí simularemos guardado en localStorage)
+    // Guardar la rutina en localStorage
     localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
+    
+    // Si estamos conectados a la base de datos, guardar también en MySQL
+    if (databaseConnected) {
+      try {
+        await mysqlConnection.saveRoutine({
+          name: "Mi Rutina Semanal",
+          objetivo: "personalizada",
+          nivel: "personalizada", 
+          equipamiento: "personalizada",
+          dias: days,
+          exercises: routineData
+        });
+        
+        toast({
+          title: "¡Rutina guardada en MySQL!",
+          description: `Tu rutina de ${days} días ha sido guardada en la base de datos`,
+          action: <Database className="h-4 w-4 text-green-500" />,
+        });
+      } catch (err) {
+        console.error("Error al guardar rutina en MySQL:", err);
+      }
+    }
     
     // Mostrar notificación
     toast({
@@ -117,6 +175,12 @@ export function CreateWeeklyRoutineDialog({
           </DialogTitle>
           <DialogDescription>
             Configura tu rutina de entrenamiento semanal personalizada
+            {databaseConnected && databaseExercises.length > 0 && (
+              <div className="mt-1 flex items-center text-green-600 dark:text-green-400 text-sm">
+                <Database className="h-4 w-4 mr-1" />
+                <span>MySQL conectado ({databaseExercises.length} ejercicios disponibles)</span>
+              </div>
+            )}
           </DialogDescription>
         </DialogHeader>
         
@@ -182,8 +246,17 @@ export function CreateWeeklyRoutineDialog({
             onClick={createAutomaticRoutine}
             className="gradient-btn"
           >
-            <Calendar className="mr-2 h-4 w-4" />
-            Crear Mi Rutina Semanal
+            {databaseConnected && databaseExercises.length > 0 ? (
+              <>
+                <Database className="mr-2 h-4 w-4" />
+                Crear Rutina con datos MySQL
+              </>
+            ) : (
+              <>
+                <Calendar className="mr-2 h-4 w-4" />
+                Crear Mi Rutina Semanal
+              </>
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>

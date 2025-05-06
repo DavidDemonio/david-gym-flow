@@ -1,8 +1,9 @@
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ArrowRight, CheckCircle } from 'lucide-react';
+import { Dumbbell, ArrowRight, CheckCircle, Database } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { Exercise, mysqlConnection } from "../utils/mysqlConnection";
 
 const objetivos = [
   { id: 'fuerza', name: 'Fuerza', description: 'Aumentar tu fuerza y potencia muscular' },
@@ -33,6 +34,34 @@ const CrearRutina = () => {
     dias: 3,
     equipamiento: '',
   });
+  
+  // Estado para ejercicios disponibles
+  const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
+  // Estado para indicar si estamos conectados a la base de datos
+  const [databaseConnected, setDatabaseConnected] = useState(false);
+
+  // Cargar ejercicios desde la base de datos al iniciar
+  useEffect(() => {
+    const checkDatabaseConnection = () => {
+      const isConnected = mysqlConnection.isConnected();
+      setDatabaseConnected(isConnected);
+      
+      if (isConnected) {
+        // Cargar ejercicios desde la base de datos
+        const loadExercises = async () => {
+          const exercises = await mysqlConnection.getExercises();
+          if (exercises && exercises.length > 0) {
+            setAvailableExercises(exercises);
+            console.log("Ejercicios cargados desde MySQL:", exercises.length);
+          }
+        };
+        
+        loadExercises();
+      }
+    };
+    
+    checkDatabaseConnection();
+  }, []);
 
   const handleSelectObjetivo = (objetivo: string) => {
     setFormData({ ...formData, objetivo });
@@ -51,7 +80,7 @@ const CrearRutina = () => {
     setFormData({ ...formData, dias });
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     // Validación básica
@@ -64,23 +93,143 @@ const CrearRutina = () => {
       return;
     }
     
-    // Aquí iría la lógica para generar la rutina basada en los datos
-    console.log('Datos enviados:', formData);
-    
-    // Simulando generación de rutina
-    toast({
-      title: "¡Rutina creada!",
-      description: "Tu rutina personalizada está lista",
-    });
-    
-    // Redireccionar a la página de rutina
-    navigate('/mi-rutina', { state: { formData } });
+    // Decidir si usar datos de la base de datos o los mockups
+    if (databaseConnected && availableExercises.length > 0) {
+      await generateRoutineFromDatabase();
+    } else {
+      // Usar el método antiguo con datos mockup
+      console.log('Datos enviados:', formData);
+      
+      // Simulando generación de rutina
+      toast({
+        title: "¡Rutina creada!",
+        description: "Tu rutina personalizada está lista",
+      });
+      
+      // Redireccionar a la página de rutina
+      navigate('/mi-rutina', { state: { formData } });
+    }
+  };
+  
+  // Generar rutina desde la base de datos
+  const generateRoutineFromDatabase = async () => {
+    // Filtrar ejercicios según los criterios
+    try {
+      // Calcular ejercicios para cada día
+      const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+      const selectedDays = weekDays.slice(0, formData.dias);
+      
+      // Mapear nivel seleccionado a dificultad de ejercicio
+      let difficultyLevel = "Principiante";
+      if (formData.nivel === 'intermedio') difficultyLevel = "Intermedio";
+      if (formData.nivel === 'avanzado') difficultyLevel = "Avanzado";
+      
+      // Mapear equipamiento seleccionado
+      let equipmentType = "Sin equipo";
+      if (formData.equipamiento === 'basico') equipmentType = "Mancuernas";
+      if (formData.equipamiento === 'completo') equipmentType = "Máquinas";
+      
+      // Configuración para cada día de entrenamiento
+      const dayFocus = [
+        { day: 0, focus: ["Pecho", "Tríceps"], name: "Pecho y Tríceps" },
+        { day: 1, focus: ["Espalda", "Bíceps"], name: "Espalda y Bíceps" },
+        { day: 2, focus: ["Piernas", "Hombros", "Glúteos"], name: "Piernas y Hombros" },
+        { day: 3, focus: ["Full body"], name: "Full Body" },
+        { day: 4, focus: ["Core", "Abdominales"], name: "Core y Cardio" },
+        { day: 5, focus: ["Pecho", "Espalda", "Hombros"], name: "Parte Superior" },
+        { day: 6, focus: ["Piernas", "Glúteos", "Core"], name: "Parte Inferior" },
+      ];
+      
+      // Generar rutina
+      const routineData: {[day: string]: Exercise[]} = {};
+      
+      // Para cada día seleccionado
+      for (let i = 0; i < selectedDays.length; i++) {
+        const dayName = selectedDays[i];
+        const dayConfig = dayFocus[i % dayFocus.length];
+        
+        // Filtrar ejercicios para este día
+        let filteredExercises = availableExercises.filter(ex => 
+          // Filtrar por dificultad si está disponible
+          (!ex.difficulty || ex.difficulty === difficultyLevel) &&
+          // Filtrar por equipamiento si está disponible
+          (!ex.equipment || (formData.equipamiento === 'completo' || ex.equipment === equipmentType || ex.equipment === "Sin equipo")) &&
+          // Filtrar por grupo muscular
+          ex.muscleGroups.some(mg => dayConfig.focus.includes(mg))
+        );
+        
+        // Si no hay suficientes ejercicios, agregar algunos genéricos
+        if (filteredExercises.length < 4) {
+          const genericExercises = availableExercises.filter(ex => 
+            !filteredExercises.includes(ex) &&
+            (!ex.equipment || (formData.equipamiento === 'completo' || ex.equipment === equipmentType || ex.equipment === "Sin equipo"))
+          );
+          
+          // Añadir ejercicios genéricos hasta tener al menos 4
+          filteredExercises = [...filteredExercises, ...genericExercises.slice(0, 4 - filteredExercises.length)];
+        }
+        
+        // Limitar a 5 ejercicios por día como máximo
+        filteredExercises = filteredExercises.slice(0, 5);
+        
+        // Guardar para este día
+        routineData[dayName] = filteredExercises;
+      }
+      
+      // Guardar rutina en la "base de datos"
+      const weeklyRoutineData = {
+        name: "Mi Rutina Personalizada",
+        days: formData.dias,
+        dayNames: selectedDays,
+        focusAreas: Object.fromEntries(
+          selectedDays.map((_, index) => [(index + 1).toString(), dayFocus[index % dayFocus.length].name])
+        ),
+        exercises: routineData
+      };
+      
+      // Guardar en localStorage y en la "base de datos"
+      localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
+      
+      if (mysqlConnection.isConnected()) {
+        await mysqlConnection.saveRoutine({
+          name: "Mi Rutina Personalizada",
+          objetivo: formData.objetivo,
+          nivel: formData.nivel,
+          equipamiento: formData.equipamiento,
+          dias: formData.dias,
+          exercises: routineData
+        });
+      }
+      
+      toast({
+        title: "¡Rutina creada!",
+        description: "Tu rutina personalizada se ha generado con éxito desde la base de datos.",
+      });
+      
+      // Redireccionar a la página de rutina
+      navigate('/mi-rutina', { state: { weeklyRoutine: true } });
+    } catch (err) {
+      console.error("Error al generar rutina:", err);
+      toast({
+        variant: "destructive",
+        title: "Error al generar rutina",
+        description: "Ocurrió un error al generar tu rutina. Inténtalo de nuevo.",
+      });
+    }
   };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="max-w-3xl mx-auto">
-        <h1 className="text-3xl font-bold mb-2 gradient-text">Crear Rutina Personalizada</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-3xl font-bold mb-2 gradient-text">Crear Rutina Personalizada</h1>
+          {databaseConnected && availableExercises.length > 0 && (
+            <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
+              <Database className="h-4 w-4 mr-1" />
+              <span>MySQL conectado ({availableExercises.length} ejercicios)</span>
+            </div>
+          )}
+        </div>
         <p className="text-gray-600 mb-8">Completa la información para generar tu rutina perfecta</p>
         
         <form onSubmit={handleSubmit} className="space-y-8">
@@ -206,8 +355,17 @@ const CrearRutina = () => {
               type="submit"
               className="gradient-btn px-8 py-3 text-lg flex items-center"
             >
-              Generar Mi Rutina
-              <Dumbbell className="ml-2 h-5 w-5" />
+              {databaseConnected && availableExercises.length > 0 ? (
+                <>
+                  Generar Mi Rutina desde MySQL
+                  <Database className="ml-2 h-5 w-5" />
+                </>
+              ) : (
+                <>
+                  Generar Mi Rutina
+                  <Dumbbell className="ml-2 h-5 w-5" />
+                </>
+              )}
             </button>
           </div>
         </form>
