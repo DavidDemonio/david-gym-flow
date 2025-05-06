@@ -292,8 +292,8 @@ const Ajustes = () => {
   };
   
   // Test database connection
-  const testDbConnection = () => {
-    const result = mysqlConnection.testConnection();
+  const testDbConnection = async () => {
+    const result = await mysqlConnection.testConnection();
     
     if (result.success) {
       toast({
