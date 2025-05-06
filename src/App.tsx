@@ -14,6 +14,7 @@ import CalculadoraIMC from "./pages/CalculadoraIMC";
 import MiRutina from "./pages/MiRutina";
 import NotFound from "./pages/NotFound";
 import MaquinasEjercicios from "./pages/MaquinasEjercicios";
+import Ajustes from "./pages/Ajustes";
 
 // Component Imports
 import NavBar from "./components/NavBar";
@@ -69,6 +70,7 @@ const App = () => {
                 <Route path="/calculadora-imc" element={<CalculadoraIMC />} />
                 <Route path="/mi-rutina" element={<MiRutina />} />
                 <Route path="/maquinas-ejercicios" element={<MaquinasEjercicios />} />
+                <Route path="/ajustes" element={<Ajustes />} />
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

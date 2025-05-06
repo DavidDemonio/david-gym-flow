@@ -2,7 +2,7 @@
 import { Equipment } from "../data/equipmentData";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Activity, Dumbbell, BarChart3, Weight, MoveHorizontal, ArrowDownUp, Infinity, Bike, Stretch, ChevronUp, ChevronDown } from "lucide-react";
+import { Activity, Dumbbell, BarChart3, Weight, MoveHorizontal, ArrowDownUp, Infinity, Bike, ChevronUp, ChevronDown } from "lucide-react";
 
 interface EquipmentCardProps {
   equipment: Equipment;
@@ -16,8 +16,8 @@ const equipmentIcons = {
   "prensa-piernas": <ChevronDown className="h-7 w-7" />,
   "polea-alta": <ChevronDown className="h-7 w-7" />,
   "polea-baja": <ChevronUp className="h-7 w-7" />,
-  "extension-pierna": <Stretch className="h-7 w-7" />,
-  "curl-femoral": <Stretch className="h-7 w-7 transform rotate-180" />,
+  "extension-pierna": <Dumbbell className="h-7 w-7 transform rotate-90" />,
+  "curl-femoral": <Dumbbell className="h-7 w-7 transform rotate-180" />,
   "aductor": <MoveHorizontal className="h-7 w-7" />,
   "abductor": <MoveHorizontal className="h-7 w-7 transform rotate-180" />,
   "press-hombro": <Weight className="h-7 w-7 transform rotate-90" />,
