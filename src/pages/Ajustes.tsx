@@ -8,7 +8,8 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Activity, Dumbbell, Database, Save, RotateCcw, Shield, Download, Upload } from "lucide-react";
 import { gymEquipment, exercises as equipmentDataExercises } from '../data/equipmentData';
-import { mysqlConnection, DbConfig } from "../utils/mysqlConnection";
+import { mysqlConnection, DbConfig, Equipment as MySQLEquipment, Exercise as MySQLExercise } from "../utils/mysqlConnection";
+import { Equipment as DataEquipment, Exercise as DataExercise } from "../data/equipmentData";
 
 const muscleGroups = [
   "Pecho", "Espalda", "Hombros", "Tríceps", "Bíceps", "Abdominales",
@@ -22,8 +23,8 @@ const Ajustes = () => {
   const { toast } = useToast();
 
   // Estado para equipos y ejercicios personalizados
-  const [customEquipment, setCustomEquipment] = useState([...gymEquipment]);
-  const [customExercises, setCustomExercises] = useState([...equipmentDataExercises]);
+  const [customEquipment, setCustomEquipment] = useState<DataEquipment[]>([...gymEquipment]);
+  const [customExercises, setCustomExercises] = useState<DataExercise[]>([...equipmentDataExercises]);
   
   // Estado para los formularios
   const [newEquipment, setNewEquipment] = useState({
@@ -54,6 +55,63 @@ const Ajustes = () => {
     database: "gymflow"
   });
   
+  // Conversion helper functions
+  const convertToDataEquipment = (equipment: MySQLEquipment): DataEquipment => {
+    return {
+      id: equipment.id || "",
+      name: equipment.name,
+      emoji: equipment.emoji,
+      category: equipment.category,
+      description: equipment.description,
+      muscleGroups: equipment.muscleGroups,
+      caloriesPerHour: equipment.caloriesPerHour,
+      image: equipment.image
+    };
+  };
+  
+  const convertToDataExercise = (exercise: MySQLExercise): DataExercise => {
+    return {
+      id: exercise.id || "",
+      name: exercise.name,
+      emoji: exercise.emoji,
+      equipment: exercise.equipment as string[] | null,
+      muscleGroups: exercise.muscleGroups,
+      difficulty: exercise.difficulty as "principiante" | "intermedio" | "avanzado",
+      description: exercise.description,
+      requiresGym: exercise.requiresGym,
+      caloriesPerRep: exercise.caloriesPerRep,
+      videoUrl: exercise.videoUrl
+    };
+  };
+  
+  const convertToMySQLEquipment = (equipment: DataEquipment): MySQLEquipment => {
+    return {
+      id: equipment.id,
+      name: equipment.name,
+      emoji: equipment.emoji,
+      category: equipment.category,
+      description: equipment.description,
+      muscleGroups: equipment.muscleGroups,
+      caloriesPerHour: equipment.caloriesPerHour,
+      image: equipment.image
+    };
+  };
+  
+  const convertToMySQLExercise = (exercise: DataExercise): MySQLExercise => {
+    return {
+      id: exercise.id,
+      name: exercise.name,
+      emoji: exercise.emoji,
+      equipment: exercise.equipment,
+      muscleGroups: exercise.muscleGroups,
+      difficulty: exercise.difficulty,
+      description: exercise.description,
+      requiresGym: exercise.requiresGym,
+      caloriesPerRep: exercise.caloriesPerRep,
+      videoUrl: exercise.videoUrl
+    };
+  };
+  
   // Cargar configuración guardada de la base de datos al iniciar
   useEffect(() => {
     const savedConfig = mysqlConnection.getConfig();
@@ -68,11 +126,11 @@ const Ajustes = () => {
         const savedExercises = await mysqlConnection.getExercises();
         
         if (savedEquipment && savedEquipment.length > 0) {
-          setCustomEquipment(savedEquipment);
+          setCustomEquipment(savedEquipment.map(convertToDataEquipment));
         }
         
         if (savedExercises && savedExercises.length > 0) {
-          setCustomExercises(savedExercises);
+          setCustomExercises(savedExercises.map(convertToDataExercise));
         }
       }
     };
@@ -121,20 +179,21 @@ const Ajustes = () => {
       return;
     }
 
-    const updatedList = [
-      ...customEquipment,
-      {
-        ...newEquipment,
-        id: Date.now(),
-        imagePath: "/placeholder.svg"
-      }
-    ];
+    const newItem: DataEquipment = {
+      ...newEquipment,
+      id: `eq-${Date.now()}`,
+      emoji: "🏋️",
+      category: "Personalizado",
+      imagePath: "/placeholder.svg"
+    };
+
+    const updatedList = [...customEquipment, newItem];
     
     setCustomEquipment(updatedList);
     
     // Guardar en "base de datos"
     if (mysqlConnection.isConnected()) {
-      mysqlConnection.saveEquipment(updatedList);
+      mysqlConnection.saveEquipment(updatedList.map(convertToMySQLEquipment));
     }
     
     toast({
@@ -161,20 +220,22 @@ const Ajustes = () => {
       return;
     }
 
-    const updatedList = [
-      ...customExercises,
-      {
-        ...newExercise,
-        id: Date.now(),
-        imagePath: "/placeholder.svg"
-      }
-    ];
+    const newItem: DataExercise = {
+      ...newExercise,
+      id: `ex-${Date.now()}`,
+      equipment: newExercise.equipment ? [newExercise.equipment] : null,
+      difficulty: newExercise.difficulty.toLowerCase() as "principiante" | "intermedio" | "avanzado",
+      requiresGym: newExercise.equipment !== "Sin equipo" && newExercise.equipment !== "",
+      imagePath: "/placeholder.svg"
+    };
+
+    const updatedList = [...customExercises, newItem];
     
     setCustomExercises(updatedList);
     
     // Guardar en "base de datos"
     if (mysqlConnection.isConnected()) {
-      mysqlConnection.saveExercises(updatedList);
+      mysqlConnection.saveExercises(updatedList.map(convertToMySQLExercise));
     }
     
     toast({
@@ -231,10 +292,10 @@ const Ajustes = () => {
     
     try {
       // Guardar equipos
-      await mysqlConnection.saveEquipment(customEquipment);
+      await mysqlConnection.saveEquipment(customEquipment.map(convertToMySQLEquipment));
       
       // Guardar ejercicios
-      await mysqlConnection.saveExercises(customExercises);
+      await mysqlConnection.saveExercises(customExercises.map(convertToMySQLExercise));
       
       // Recuperar y guardar rutinas existentes
       const existingRoutine = localStorage.getItem('weeklyRoutine');
@@ -279,13 +340,13 @@ const Ajustes = () => {
       // Cargar equipos
       const equipment = await mysqlConnection.getEquipment();
       if (equipment.length > 0) {
-        setCustomEquipment(equipment);
+        setCustomEquipment(equipment.map(convertToDataEquipment));
       }
       
       // Cargar ejercicios
       const exercises = await mysqlConnection.getExercises();
       if (exercises.length > 0) {
-        setCustomExercises(exercises);
+        setCustomExercises(exercises.map(convertToDataExercise));
       }
       
       toast({

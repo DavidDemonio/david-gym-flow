@@ -1,4 +1,3 @@
-
 /**
  * MySQL connection utility for the application
  * Handles connection to the database and provides CRUD operations
@@ -15,22 +14,22 @@ export interface DbConfig {
 
 // Types for database data
 export interface Equipment {
-  id?: number;
+  id?: string;
   name: string;
   muscleGroups: string[];
   description: string;
   imagePath?: string;
-  emoji?: string;
-  category?: string;
+  emoji: string;
+  category: string;
   caloriesPerHour?: number;
   image?: string;
 }
 
 export interface Exercise {
-  id?: number | string;
+  id?: string;
   name: string;
   muscleGroups: string[];
-  equipment?: string | string[];
+  equipment?: string[] | null;
   description: string;
   difficulty: string;
   sets?: number;
@@ -39,8 +38,8 @@ export interface Exercise {
   calories?: number;
   caloriesPerRep?: number;
   imagePath?: string;
-  emoji?: string;
-  requiresGym?: boolean;
+  emoji: string;
+  requiresGym: boolean;
   videoUrl?: string;
 }
 
