@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -238,7 +237,7 @@ const Ajustes = () => {
       difficulty: newExercise.difficulty.toLowerCase() as "principiante" | "intermedio" | "avanzado",
       requiresGym: newExercise.equipment !== "Sin equipo" && newExercise.equipment !== "",
       emoji: newExercise.emoji,
-      image: "/placeholder.svg"
+      caloriesPerRep: newExercise.calories
     };
 
     const updatedList = [...customExercises, newItem];
