@@ -33,7 +33,7 @@ const ThemeToggle = () => {
     return () => clearTimeout(timer);
   }, [isDark]);
 
-  // Inicializa el tema desde localStorage en la carga inicial
+  // Initialize theme from localStorage on initial load
   useEffect(() => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -56,6 +56,29 @@ const ThemeToggle = () => {
         transition: background-color 1s cubic-bezier(0.16, 1, 0.3, 1), 
                     border-color 1s cubic-bezier(0.16, 1, 0.3, 1),
                     color 0.7s cubic-bezier(0.16, 1, 0.3, 1) !important;
+      }
+      
+      /* Ensure dropdown menus are visible in all modes */
+      [data-radix-popper-content-wrapper] {
+        z-index: 50 !important;
+      }
+      
+      .dark [data-radix-select-content],
+      .dark [data-radix-dropdown-menu-content],
+      .dark [data-radix-popover-content] {
+        background-color: hsl(228 20% 13%) !important;
+        border-color: hsl(217 33% 25%) !important;
+        color: white !important;
+      }
+      
+      .dark [data-radix-select-item],
+      .dark [data-radix-dropdown-menu-item] {
+        color: hsl(210 40% 98%) !important;
+      }
+      
+      .dark [data-radix-select-item]:hover,
+      .dark [data-radix-dropdown-menu-item]:hover {
+        background-color: hsl(229 23% 19%) !important;
       }
     `;
     document.head.appendChild(style);

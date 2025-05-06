@@ -21,12 +21,16 @@ async function testEmailConnection(config) {
     await transporter.verify();
     
     logger.info(`SMTP connection test successful for ${config.smtpUser}@${config.smtpHost}:${config.smtpPort}`);
-    return { success: true };
+    return { 
+      success: true,
+      message: `Conexión exitosa a ${config.smtpHost}:${config.smtpPort}`
+    };
   } catch (error) {
     logger.error('SMTP connection test failed:', error);
     return { 
       success: false, 
       error: error.message,
+      message: `Error al conectar: ${error.message}`,
       details: {
         host: config.smtpHost,
         port: config.smtpPort,
@@ -58,10 +62,18 @@ async function sendEmail(config, to, subject, body) {
     const info = await transporter.sendMail(mailOptions);
     
     logger.info(`Email sent to ${to}, message ID: ${info.messageId}`);
-    return { success: true, messageId: info.messageId };
+    return { 
+      success: true, 
+      messageId: info.messageId,
+      message: `Correo enviado exitosamente a ${to}`
+    };
   } catch (error) {
     logger.error('Error sending email:', error);
-    return { success: false, error: error.message };
+    return { 
+      success: false, 
+      error: error.message,
+      message: `Error al enviar: ${error.message}`
+    };
   }
 }
 
@@ -69,7 +81,7 @@ function createTransporter(config) {
   // Convert string 'true'/'false' to boolean if needed
   const secure = config.secure === 'true' || config.secure === true;
   const secureType = (config.secureType || 'TLS').toUpperCase();
-  const isZoho = config.smtpHost && config.smtpHost.includes('zoho');
+  const isZoho = config.smtpHost && config.smtpHost.toLowerCase().includes('zoho');
   
   let transporterOptions = {
     host: config.smtpHost,

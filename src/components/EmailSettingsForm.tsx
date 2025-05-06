@@ -21,7 +21,7 @@ const EmailSettingsForm: React.FC = () => {
     smtpPassword: '',
     fromEmail: '',
     secure: false,
-    secureType: 'TLS'
+    secureType: 'TLS' // This ensures it's properly typed as "TLS" | "SSL"
   });
   
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -42,26 +42,36 @@ const EmailSettingsForm: React.FC = () => {
       // Try to load from envManager first
       await envManager.ready();
       
-      const fromEnv = {
-        smtpHost: envManager.get('SMTP_HOST') || '',
+      const smtpHost = envManager.get('SMTP_HOST') || '';
+      const isZohoHost = smtpHost.toLowerCase().includes('zoho');
+      setIsZoho(isZohoHost);
+
+      // Ensure secureType is explicitly cast as the correct type
+      const secureTypeValue = envManager.get('SMTP_SECURE_TYPE') || 'TLS';
+      const secureType = secureTypeValue === 'SSL' ? 'SSL' : 'TLS';
+
+      const fromEnv: EmailConfig = {
+        smtpHost,
         smtpPort: parseInt(envManager.get('SMTP_PORT') || '587'),
         smtpUser: envManager.get('SMTP_USER') || '',
         smtpPassword: envManager.get('SMTP_PASSWORD') || '',
         fromEmail: envManager.get('FROM_EMAIL') || '',
-        secure: envManager.get('SMTP_SECURE') === 'true',
-        secureType: envManager.get('SMTP_SECURE_TYPE') || 'TLS'
+        secure: isZohoHost ? false : envManager.get('SMTP_SECURE') === 'true',
+        secureType
       };
       
       if (fromEnv.smtpHost) {
         setEmailConfig(fromEnv);
-        // Detectar si es Zoho
-        checkIfZoho(fromEnv.smtpHost);
       } else {
         // Fall back to mysqlConnection
         const savedEmailConfig = mysqlConnection.getEmailConfig();
         if (savedEmailConfig) {
-          setEmailConfig(savedEmailConfig);
-          // Detectar si es Zoho
+          // Ensure secureType is properly typed
+          const config = {
+            ...savedEmailConfig,
+            secureType: savedEmailConfig.secureType === 'SSL' ? 'SSL' : 'TLS'
+          };
+          setEmailConfig(config);
           checkIfZoho(savedEmailConfig.smtpHost);
         }
       }
@@ -84,6 +94,7 @@ const EmailSettingsForm: React.FC = () => {
       setEmailConfig(prev => ({
         ...prev,
         secure: false, // Para Zoho con puerto 587, debe ser false
+        secureType: 'TLS' // Asegurarnos de que sea TLS para Zoho
       }));
     }
   };
@@ -91,7 +102,15 @@ const EmailSettingsForm: React.FC = () => {
   // Handle email config changes
   const handleEmailConfigChange = (field: keyof EmailConfig, value: string | number | boolean) => {
     setEmailConfig(prev => {
-      const newConfig = { ...prev, [field]: value };
+      const newConfig = { ...prev };
+      
+      if (field === 'secureType') {
+        // Ensure secureType is properly typed
+        newConfig.secureType = value === 'SSL' ? 'SSL' : 'TLS';
+      } else {
+        // @ts-ignore - we know this is safe
+        newConfig[field] = value;
+      }
       
       // Si cambia el host, verificar si es Zoho
       if (field === 'smtpHost') {
@@ -121,17 +140,24 @@ const EmailSettingsForm: React.FC = () => {
     
     setSaveEmailStatus('saving');
     try {
+      // Apply Zoho-specific settings if needed
+      const configToSave = { ...emailConfig };
+      if (isZoho) {
+        configToSave.secure = false;
+        configToSave.secureType = 'TLS';
+      }
+      
       // Guardar también en envManager
-      envManager.set('SMTP_HOST', emailConfig.smtpHost);
-      envManager.set('SMTP_PORT', emailConfig.smtpPort.toString());
-      envManager.set('SMTP_USER', emailConfig.smtpUser);
-      envManager.set('SMTP_PASSWORD', emailConfig.smtpPassword);
-      envManager.set('FROM_EMAIL', emailConfig.fromEmail);
-      envManager.set('SMTP_SECURE', emailConfig.secure.toString());
-      envManager.set('SMTP_SECURE_TYPE', emailConfig.secureType);
+      envManager.set('SMTP_HOST', configToSave.smtpHost);
+      envManager.set('SMTP_PORT', configToSave.smtpPort.toString());
+      envManager.set('SMTP_USER', configToSave.smtpUser);
+      envManager.set('SMTP_PASSWORD', configToSave.smtpPassword);
+      envManager.set('FROM_EMAIL', configToSave.fromEmail);
+      envManager.set('SMTP_SECURE', configToSave.secure.toString());
+      envManager.set('SMTP_SECURE_TYPE', configToSave.secureType);
       
       // También guardar en mysqlConnection para compatibilidad
-      await mysqlConnection.setEmailConfig(emailConfig);
+      await mysqlConnection.setEmailConfig(configToSave);
       
       setSaveEmailStatus('success');
       toast({
@@ -194,6 +220,13 @@ const EmailSettingsForm: React.FC = () => {
   const handleTestEmailConfig = async () => {
     setTestStatus('testing');
     try {
+      // Apply Zoho-specific settings if needed
+      const configToTest = { ...emailConfig };
+      if (isZoho) {
+        configToTest.secure = false;
+        configToTest.secureType = 'TLS';
+      }
+      
       const result = await mysqlConnection.testEmailConfig();
       
       if (result.success) {
@@ -286,7 +319,7 @@ const EmailSettingsForm: React.FC = () => {
         );
       case 'success':
         return (
-          <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-600">
+          <Button variant="outline" className="flex-1 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-600 dark:text-green-400">
             <Check className="mr-2 h-4 w-4" />
             Conexión exitosa
           </Button>
@@ -319,7 +352,7 @@ const EmailSettingsForm: React.FC = () => {
         );
       case 'success':
         return (
-          <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-600">
+          <Button variant="outline" className="flex-1 bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-700 text-green-600 dark:text-green-400">
             <Check className="mr-2 h-4 w-4" />
             Correo enviado
           </Button>
@@ -343,7 +376,7 @@ const EmailSettingsForm: React.FC = () => {
   
   return (
     <div className="space-y-6">
-      <Card className="shadow-md">
+      <Card className="shadow-md dark:bg-gray-800/50 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -356,7 +389,9 @@ const EmailSettingsForm: React.FC = () => {
               </CardDescription>
             </div>
             {saveProfileStatus === 'success' && (
-              <Badge variant="success">Guardado</Badge>
+              <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700">
+                Guardado
+              </Badge>
             )}
           </div>
         </CardHeader>
@@ -370,6 +405,7 @@ const EmailSettingsForm: React.FC = () => {
                 value={userProfile.email}
                 onChange={(e) => handleUserProfileChange('email', e.target.value)}
                 placeholder="tu@correo.com"
+                className="dark:bg-gray-900/50 dark:border-gray-700"
               />
             </div>
             <div className="space-y-2">
@@ -379,6 +415,7 @@ const EmailSettingsForm: React.FC = () => {
                 value={userProfile.name || ''}
                 onChange={(e) => handleUserProfileChange('name', e.target.value)}
                 placeholder="Tu nombre"
+                className="dark:bg-gray-900/50 dark:border-gray-700"
               />
             </div>
           </div>
@@ -395,7 +432,7 @@ const EmailSettingsForm: React.FC = () => {
         <CardFooter>
           <Button 
             onClick={handleSaveUserProfile} 
-            className="w-full"
+            className="w-full dark:bg-purple-800 dark:hover:bg-purple-900 dark:text-white"
             disabled={saveProfileStatus === 'saving'}
           >
             {saveProfileStatus === 'saving' ? (
@@ -413,7 +450,7 @@ const EmailSettingsForm: React.FC = () => {
         </CardFooter>
       </Card>
       
-      <Card className="shadow-md">
+      <Card className="shadow-md dark:bg-gray-800/50 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center justify-between">
             <div>
@@ -421,14 +458,16 @@ const EmailSettingsForm: React.FC = () => {
               <CardDescription>
                 Configure el servidor de correo electrónico para enviar notificaciones
                 {isZoho && (
-                  <Badge variant="outline" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
+                  <Badge variant="outline" className="ml-2 bg-blue-50 dark:bg-blue-900/20 text-blue-700 dark:text-blue-400 border-blue-200 dark:border-blue-700">
                     Zoho Mail
                   </Badge>
                 )}
               </CardDescription>
             </div>
             {saveEmailStatus === 'success' && (
-              <Badge variant="success">Guardado</Badge>
+              <Badge variant="outline" className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 border-green-200 dark:border-green-700">
+                Guardado
+              </Badge>
             )}
           </div>
         </CardHeader>
@@ -441,9 +480,10 @@ const EmailSettingsForm: React.FC = () => {
                 value={emailConfig.smtpHost}
                 onChange={(e) => handleEmailConfigChange('smtpHost', e.target.value)}
                 placeholder="smtp.example.com"
+                className="dark:bg-gray-900/50 dark:border-gray-700"
               />
               {isZoho && (
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                   Configuración de Zoho Mail detectada
                 </p>
               )}
@@ -456,9 +496,10 @@ const EmailSettingsForm: React.FC = () => {
                 value={emailConfig.smtpPort}
                 onChange={(e) => handleEmailConfigChange('smtpPort', parseInt(e.target.value))}
                 placeholder="587"
+                className="dark:bg-gray-900/50 dark:border-gray-700"
               />
               {isZoho && (
-                <p className="text-xs text-blue-600 mt-1">
+                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
                   Puerto recomendado para Zoho: 587
                 </p>
               )}
@@ -473,6 +514,7 @@ const EmailSettingsForm: React.FC = () => {
                 value={emailConfig.smtpUser}
                 onChange={(e) => handleEmailConfigChange('smtpUser', e.target.value)}
                 placeholder="usuario@example.com"
+                className="dark:bg-gray-900/50 dark:border-gray-700"
               />
             </div>
             <div className="space-y-2">
@@ -483,6 +525,7 @@ const EmailSettingsForm: React.FC = () => {
                 value={emailConfig.smtpPassword}
                 onChange={(e) => handleEmailConfigChange('smtpPassword', e.target.value)}
                 placeholder="••••••••"
+                className="dark:bg-gray-900/50 dark:border-gray-700"
               />
             </div>
           </div>
@@ -494,6 +537,7 @@ const EmailSettingsForm: React.FC = () => {
               value={emailConfig.fromEmail}
               onChange={(e) => handleEmailConfigChange('fromEmail', e.target.value)}
               placeholder="noreply@tuapp.com"
+              className="dark:bg-gray-900/50 dark:border-gray-700"
             />
           </div>
           
@@ -505,7 +549,7 @@ const EmailSettingsForm: React.FC = () => {
                 onCheckedChange={(checked) => handleEmailConfigChange('secure', checked)}
                 disabled={isZoho} // Deshabilitar para Zoho
               />
-              <Label htmlFor="secure_connection" className={isZoho ? "text-gray-500" : ""}>
+              <Label htmlFor="secure_connection" className={isZoho ? "text-gray-500 dark:text-gray-400" : ""}>
                 Conexión Segura (SSL/TLS)
                 {isZoho && <span className="text-xs ml-1">(Configurado automáticamente para Zoho)</span>}
               </Label>
@@ -519,16 +563,16 @@ const EmailSettingsForm: React.FC = () => {
                   onValueChange={(value) => handleEmailConfigChange('secureType', value)}
                   disabled={isZoho} // Deshabilitar para Zoho
                 >
-                  <SelectTrigger id="secure_type" className={isZoho ? "bg-gray-100" : ""}>
+                  <SelectTrigger id="secure_type" className={isZoho ? "bg-gray-100 dark:bg-gray-800" : "dark:bg-gray-900/50 dark:border-gray-700"}>
                     <SelectValue placeholder="Seleccionar tipo" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                     <SelectItem value="SSL">SSL</SelectItem>
                     <SelectItem value="TLS">TLS</SelectItem>
                   </SelectContent>
                 </Select>
                 {isZoho && (
-                  <p className="text-xs text-blue-600">
+                  <p className="text-xs text-blue-600 dark:text-blue-400">
                     Para Zoho Mail se usa una configuración especial de TLS
                   </p>
                 )}
@@ -539,7 +583,7 @@ const EmailSettingsForm: React.FC = () => {
         <CardFooter className="flex flex-col space-y-3">
           <Button 
             onClick={handleSaveEmailConfig} 
-            className="w-full"
+            className="w-full dark:bg-purple-800 dark:hover:bg-purple-900 dark:text-white"
             disabled={saveEmailStatus === 'saving'}
           >
             {saveEmailStatus === 'saving' ? (
@@ -555,7 +599,7 @@ const EmailSettingsForm: React.FC = () => {
             )}
           </Button>
           
-          <div className="flex gap-2 w-full">
+          <div className="flex flex-col sm:flex-row gap-2 w-full">
             {renderTestButton()}
             {renderSendButton()}
           </div>

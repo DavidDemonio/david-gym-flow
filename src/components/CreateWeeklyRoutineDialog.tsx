@@ -148,7 +148,7 @@ export function CreateWeeklyRoutineDialog({
             objetivo: "personalizada",
             nivel: "personalizada", 
             equipamiento: "personalizada",
-            dias: days,
+            dias: days, // Fix: Convert days to number explicitly if needed
             exercises: routineData,
             createdAt: new Date().toISOString()
           };
@@ -230,7 +230,7 @@ export function CreateWeeklyRoutineDialog({
 
   return (
     <Dialog open={open} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-[600px]">
+      <DialogContent className="sm:max-w-[600px] max-w-[95vw] overflow-y-auto max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="text-xl flex items-center">
             <Calendar className="mr-2 h-5 w-5" />
@@ -249,9 +249,9 @@ export function CreateWeeklyRoutineDialog({
         
         <div className="grid gap-6 py-4">
           <div className="glass-card p-4 rounded-lg">
-            <h3 className="font-medium mb-3 text-gray-700">¿Cuántos días entrenarás por semana?</h3>
+            <h3 className="font-medium mb-3 text-gray-700 dark:text-gray-300">¿Cuántos días entrenarás por semana?</h3>
             <div className="flex justify-center mb-2">
-              <span className="text-3xl font-bold text-purple-600">{days}</span>
+              <span className="text-3xl font-bold text-purple-600 dark:text-purple-400">{days}</span>
             </div>
             <input
               type="range"
@@ -260,9 +260,9 @@ export function CreateWeeklyRoutineDialog({
               step="1"
               value={days}
               onChange={(e) => setDays(parseInt(e.target.value))}
-              className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer accent-purple-600"
+              className="w-full h-2 bg-gray-200 dark:bg-gray-700 rounded-lg appearance-none cursor-pointer accent-purple-600 dark:accent-purple-500"
             />
-            <div className="w-full flex justify-between mt-1 px-1 text-xs text-gray-500">
+            <div className="w-full flex justify-between mt-1 px-1 text-xs text-gray-500 dark:text-gray-400">
               <span>2</span>
               <span>3</span>
               <span>4</span>
@@ -272,13 +272,13 @@ export function CreateWeeklyRoutineDialog({
           </div>
           
           <div className="glass-card p-4 rounded-lg">
-            <h3 className="font-medium mb-3 text-gray-700">Enfoque por día</h3>
+            <h3 className="font-medium mb-3 text-gray-700 dark:text-gray-300">Enfoque por día</h3>
             <div className="grid grid-cols-1 gap-3">
               {Array.from({ length: days }).map((_, index) => {
                 const dayNumber = (index + 1).toString();
                 return (
                   <div key={dayNumber} className="flex items-center">
-                    <div className="w-20 font-medium">
+                    <div className="w-20 font-medium dark:text-gray-300">
                       Día {dayNumber}:
                     </div>
                     <Select 
@@ -288,7 +288,7 @@ export function CreateWeeklyRoutineDialog({
                       <SelectTrigger className="w-full">
                         <SelectValue placeholder="Selecciona un enfoque" />
                       </SelectTrigger>
-                      <SelectContent>
+                      <SelectContent className="dark:bg-gray-800 dark:border-gray-700">
                         <SelectItem value="Pecho y Tríceps">💪 Pecho y Tríceps</SelectItem>
                         <SelectItem value="Espalda y Bíceps">🏋️ Espalda y Bíceps</SelectItem>
                         <SelectItem value="Piernas y Hombros">🦵 Piernas y Hombros</SelectItem>
@@ -303,11 +303,11 @@ export function CreateWeeklyRoutineDialog({
           </div>
         </div>
         
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <Button variant="outline" onClick={onClose} className="w-full sm:w-auto">Cancelar</Button>
           <Button 
             onClick={createAutomaticRoutine}
-            className="gradient-btn"
+            className="gradient-btn w-full sm:w-auto"
             disabled={isLoading}
           >
             {isLoading ? (

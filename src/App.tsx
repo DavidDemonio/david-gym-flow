@@ -19,14 +19,21 @@ import Ajustes from "./pages/Ajustes";
 // Component Imports
 import NavBar from "./components/NavBar";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 const App = () => {
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
-    // Inicializar el tema desde localStorage
+    // Initialize theme from localStorage
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
@@ -41,7 +48,16 @@ const App = () => {
       setIsLoading(false);
     }, 800);
     
-    return () => clearTimeout(timer);
+    // Add viewport meta tag for better mobile experience
+    const viewportMeta = document.createElement('meta');
+    viewportMeta.name = 'viewport';
+    viewportMeta.content = 'width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no';
+    document.head.appendChild(viewportMeta);
+    
+    return () => {
+      clearTimeout(timer);
+      document.head.removeChild(viewportMeta);
+    };
   }, []);
   
   if (isLoading) {
@@ -59,11 +75,20 @@ const App = () => {
     <QueryClientProvider client={queryClient}>
       <TooltipProvider>
         <Toaster />
-        <Sonner />
+        <Sonner 
+          position="top-right"
+          toastOptions={{
+            classNames: {
+              toast: "dark:bg-gray-800 dark:text-gray-100 dark:border-gray-700",
+              title: "dark:text-gray-100",
+              description: "dark:text-gray-400",
+            }
+          }}
+        />
         <BrowserRouter>
           <div className={`min-h-screen flex flex-col ${isMobile ? 'mobile-optimized' : ''}`}>
             <NavBar />
-            <div className="flex-1 animate-fade-in">
+            <div className="flex-1 animate-fade-in overflow-x-hidden">
               <Routes>
                 <Route path="/" element={<Home />} />
                 <Route path="/crear-rutina" element={<CrearRutina />} />
