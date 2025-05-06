@@ -1,7 +1,7 @@
 
 import { useState } from 'react';
 import { NavLink } from 'react-router-dom';
-import { Menu, X, Activity, Home, Dumbbell, Calculator } from 'lucide-react';
+import { Menu, X, Activity, Home, Dumbbell, Calculator, Settings } from 'lucide-react';
 import ThemeToggle from './ThemeToggle';
 
 const NavBar = () => {
@@ -16,6 +16,7 @@ const NavBar = () => {
     { name: 'Crear Rutina', path: '/crear-rutina', icon: <Dumbbell className="w-5 h-5" /> },
     { name: 'Calculadora IMC', path: '/calculadora-imc', icon: <Calculator className="w-5 h-5" /> },
     { name: 'Mi Rutina', path: '/mi-rutina', icon: <Activity className="w-5 h-5" /> },
+    { name: 'Ajustes', path: '/ajustes', icon: <Settings className="w-5 h-5" /> },
   ];
 
   return (

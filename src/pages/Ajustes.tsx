@@ -304,12 +304,12 @@ const Ajustes = () => {
         </Card>
 
         <Tabs defaultValue="equipment" className="col-span-1 lg:col-span-3">
-          <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto mb-6">
-            <TabsTrigger value="equipment" className="flex items-center gap-2">
+          <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto mb-6 bg-secondary dark:bg-gray-800 dark:text-gray-200">
+            <TabsTrigger value="equipment" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
               <Dumbbell className="h-4 w-4" />
               Añadir Máquinas
             </TabsTrigger>
-            <TabsTrigger value="exercises" className="flex items-center gap-2">
+            <TabsTrigger value="exercises" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
               <Activity className="h-4 w-4" />
               Añadir Ejercicios
             </TabsTrigger>
