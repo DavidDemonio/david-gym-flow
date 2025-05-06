@@ -11,6 +11,7 @@ import CrearRutina from "./pages/CrearRutina";
 import CalculadoraIMC from "./pages/CalculadoraIMC";
 import MiRutina from "./pages/MiRutina";
 import NotFound from "./pages/NotFound";
+import MaquinasEjercicios from "./pages/MaquinasEjercicios";
 
 // Component Imports
 import NavBar from "./components/NavBar";
@@ -31,6 +32,7 @@ const App = () => (
               <Route path="/crear-rutina" element={<CrearRutina />} />
               <Route path="/calculadora-imc" element={<CalculadoraIMC />} />
               <Route path="/mi-rutina" element={<MiRutina />} />
+              <Route path="/maquinas-ejercicios" element={<MaquinasEjercicios />} />
               <Route path="*" element={<NotFound />} />
             </Routes>
           </div>

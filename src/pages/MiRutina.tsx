@@ -1,8 +1,8 @@
-
-import { useState } from 'react';
-import { useLocation } from 'react-router-dom';
-import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { useLocation, useNavigate } from 'react-router-dom';
+import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell, Info, Plus } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { Button } from "@/components/ui/button";
 
 // Mock data para ejercicios
 const mockExercises = {
@@ -57,10 +57,20 @@ const mockExercises = {
   }
 };
 
+interface WeeklyRoutine {
+  name: string;
+  days: number;
+  dayNames: string[];
+  focusAreas: Record<string, string>;
+  exercises: Record<string, any[]>;
+}
+
 const MiRutina = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [activeDay, setActiveDay] = useState(0);
+  const [weeklyRoutine, setWeeklyRoutine] = useState<WeeklyRoutine | null>(null);
   
   // Intentar obtener datos del formulario o usar valores por defecto
   const formData = location.state?.formData || {
@@ -69,6 +79,18 @@ const MiRutina = () => {
     dias: 3,
     equipamiento: 'casa'
   };
+  
+  // Verificar si hay una rutina semanal en localStorage al cargar
+  useEffect(() => {
+    const savedRoutine = localStorage.getItem('weeklyRoutine');
+    if (savedRoutine) {
+      try {
+        setWeeklyRoutine(JSON.parse(savedRoutine));
+      } catch (err) {
+        console.error("Error parsing weekly routine data:", err);
+      }
+    }
+  }, [location]);
   
   // Obtener rutina basada en los datos del formulario
   const rutina = mockExercises[formData.objetivo]?.[formData.nivel]?.[formData.equipamiento] || [];
@@ -81,9 +103,129 @@ const MiRutina = () => {
     });
     
     // Aquí iría la lógica real de generación del PDF
-    console.log('Descargando rutina:', formData);
+    console.log('Descargando rutina:', weeklyRoutine || formData);
   };
   
+  // Navegar a la página de máquinas y ejercicios
+  const handleExploreExercises = () => {
+    navigate('/maquinas-ejercicios');
+  };
+  
+  // Si hay una rutina semanal, mostrarla
+  if (weeklyRoutine) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-3xl font-bold gradient-text flex items-center">
+            <Calendar className="mr-3 h-7 w-7" />
+            Mi Rutina Semanal
+          </h1>
+          
+          <div className="flex gap-3">
+            <Button 
+              onClick={handleExploreExercises}
+              variant="outline"
+              className="px-4 py-2 flex items-center text-sm"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Explorar Ejercicios
+            </Button>
+            <button 
+              onClick={handleDownload}
+              className="gradient-btn px-4 py-2 flex items-center text-sm"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Descargar PDF
+            </button>
+          </div>
+        </div>
+        
+        {/* Pestañas de días */}
+        <div className="mb-6 overflow-x-auto">
+          <div className="flex space-x-2 min-w-max">
+            {weeklyRoutine.dayNames.map((day, index) => (
+              <button
+                key={index}
+                className={`px-4 py-2 rounded-full transition-all whitespace-nowrap flex items-center gap-1 ${
+                  activeDay === index 
+                    ? 'bg-purple-600 text-white' 
+                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                }`}
+                onClick={() => setActiveDay(index)}
+              >
+                {day}
+                <span className="text-xs ml-1">
+                  {weeklyRoutine.focusAreas[(index + 1).toString()]}
+                </span>
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        {/* Contenido del día seleccionado */}
+        {weeklyRoutine.dayNames[activeDay] && (
+          <div className="glass-card rounded-xl p-6 animate-fadeInUp">
+            <div className="mb-6">
+              <h2 className="text-2xl font-bold mb-1">{weeklyRoutine.dayNames[activeDay]}</h2>
+              <p className="text-purple-600 font-medium">
+                {weeklyRoutine.focusAreas[(activeDay + 1).toString()]}
+              </p>
+            </div>
+            
+            <div className="space-y-6">
+              {weeklyRoutine.exercises[weeklyRoutine.dayNames[activeDay]]?.map((exercise, index) => (
+                <div 
+                  key={index}
+                  className="border border-gray-100 rounded-lg p-4 bg-white hover:border-purple-200 transition-all"
+                >
+                  <div className="flex items-center mb-2">
+                    <span className="text-2xl mr-2">{exercise.emoji}</span>
+                    <h3 className="font-semibold text-lg">{exercise.name}</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-3 gap-4 mb-3">
+                    <div>
+                      <p className="text-xs text-gray-500">Series</p>
+                      <p className="font-medium">3</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Repeticiones</p>
+                      <p className="font-medium">12-15</p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500">Descanso</p>
+                      <p className="font-medium">60 seg</p>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 p-3 rounded-md text-sm text-blue-700 flex">
+                    <Info className="text-blue-500 h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+                    <p>{exercise.description}</p>
+                  </div>
+                </div>
+              ))}
+
+              {(!weeklyRoutine.exercises[weeklyRoutine.dayNames[activeDay]] || 
+                weeklyRoutine.exercises[weeklyRoutine.dayNames[activeDay]].length === 0) && (
+                <div className="text-center p-6">
+                  <p className="text-gray-500 mb-4">No hay ejercicios asignados para este día</p>
+                  <Button 
+                    onClick={handleExploreExercises}
+                    className="gradient-btn"
+                  >
+                    <Plus className="mr-2 h-4 w-4" />
+                    Añadir ejercicios
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    );
+  }
+  
+  // Si no hay rutina semanal, mostrar la rutina normal
   // Si no hay rutina disponible
   if (rutina.length === 0) {
     return (
@@ -93,13 +235,23 @@ const MiRutina = () => {
           <p className="text-gray-600 mb-6">
             No se encontró una rutina para la combinación seleccionada. Por favor, crea una nueva rutina.
           </p>
-          <a 
-            href="/crear-rutina" 
-            className="gradient-btn px-6 py-2 inline-flex items-center"
-          >
-            Crear Nueva Rutina
-            <Dumbbell className="ml-2 h-5 w-5" />
-          </a>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <a 
+              href="/crear-rutina" 
+              className="gradient-btn px-6 py-2 inline-flex items-center"
+            >
+              Crear Nueva Rutina
+              <Dumbbell className="ml-2 h-5 w-5" />
+            </a>
+            <Button
+              onClick={handleExploreExercises}
+              variant="outline"
+              className="px-6 py-2 inline-flex items-center"
+            >
+              Explorar Ejercicios
+              <Plus className="ml-2 h-5 w-5" />
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -113,13 +265,23 @@ const MiRutina = () => {
           Mi Rutina
         </h1>
         
-        <button 
-          onClick={handleDownload}
-          className="gradient-btn px-4 py-2 flex items-center text-sm"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Descargar PDF
-        </button>
+        <div className="flex gap-3">
+          <Button 
+            onClick={handleExploreExercises}
+            variant="outline"
+            className="px-4 py-2 flex items-center text-sm"
+          >
+            <Plus className="mr-2 h-4 w-4" />
+            Explorar Ejercicios
+          </Button>
+          <button 
+            onClick={handleDownload}
+            className="gradient-btn px-4 py-2 flex items-center text-sm"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Descargar PDF
+          </button>
+        </div>
       </div>
       
       {/* Resumen de la rutina */}
