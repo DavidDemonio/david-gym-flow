@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -8,7 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { BarChart, Activity, Dumbbell, Database, Save, RotateCcw, Shield, Download, Upload } from "lucide-react";
-import { equipmentList, exerciseData } from '../data/equipmentData';
+import { gymEquipment, exercises as equipmentDataExercises } from '../data/equipmentData';
 import { mysqlConnection, DbConfig } from "../utils/mysqlConnection";
 
 const muscleGroups = [
@@ -23,8 +22,8 @@ const Ajustes = () => {
   const { toast } = useToast();
 
   // Estado para equipos y ejercicios personalizados
-  const [customEquipment, setCustomEquipment] = useState([...equipmentList]);
-  const [customExercises, setCustomExercises] = useState([...exerciseData]);
+  const [customEquipment, setCustomEquipment] = useState([...gymEquipment]);
+  const [customExercises, setCustomExercises] = useState([...equipmentDataExercises]);
   
   // Estado para los formularios
   const [newEquipment, setNewEquipment] = useState({

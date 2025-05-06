@@ -9,15 +9,15 @@ import {
   DialogFooter
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Exercise } from "../data/equipmentData";
+import { Exercise as DataExercise } from "../data/equipmentData";
+import { Exercise, mysqlConnection } from "../utils/mysqlConnection";
 import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Check, Database } from "lucide-react";
-import { mysqlConnection } from "../utils/mysqlConnection";
 
 interface CreateWeeklyRoutineDialogProps {
-  exercises: Exercise[];
+  exercises: DataExercise[];
   open: boolean;
   onClose: () => void;
 }
@@ -73,7 +73,9 @@ export function CreateWeeklyRoutineDialog({
     const routineData: DayExercises = {};
     
     // Determinar qué conjunto de ejercicios usar
-    const exercisesToUse = databaseConnected && databaseExercises.length > 0 ? databaseExercises : exercises;
+    const exercisesToUse = databaseConnected && databaseExercises.length > 0 
+      ? databaseExercises 
+      : exercises.map(ex => convertToMySQLExercise(ex));
     
     // Asignar ejercicios para cada día según el área de enfoque
     selectedDays.forEach((day, index) => {
@@ -156,6 +158,22 @@ export function CreateWeeklyRoutineDialog({
     // Cerrar diálogo y navegar a la página de rutina
     onClose();
     navigate('/mi-rutina', { state: { weeklyRoutine: true } });
+  };
+
+  // Helper function to convert from data/equipmentData Exercise to utils/mysqlConnection Exercise
+  const convertToMySQLExercise = (ex: DataExercise): Exercise => {
+    return {
+      id: ex.id,
+      name: ex.name,
+      emoji: ex.emoji,
+      equipment: Array.isArray(ex.equipment) ? ex.equipment : ex.equipment ? [ex.equipment] : null,
+      muscleGroups: ex.muscleGroups,
+      difficulty: ex.difficulty,
+      description: ex.description,
+      requiresGym: ex.requiresGym,
+      caloriesPerRep: ex.caloriesPerRep,
+      videoUrl: ex.videoUrl
+    };
   };
 
   const handleDayFocusChange = (day: string, value: string) => {

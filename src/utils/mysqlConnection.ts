@@ -20,21 +20,28 @@ export interface Equipment {
   muscleGroups: string[];
   description: string;
   imagePath?: string;
+  emoji?: string;
+  category?: string;
+  caloriesPerHour?: number;
+  image?: string;
 }
 
 export interface Exercise {
-  id?: number;
+  id?: number | string;
   name: string;
   muscleGroups: string[];
-  equipment?: string;
+  equipment?: string | string[];
   description: string;
   difficulty: string;
   sets?: number;
   reps?: string;
   rest?: string;
   calories?: number;
+  caloriesPerRep?: number;
   imagePath?: string;
   emoji?: string;
+  requiresGym?: boolean;
+  videoUrl?: string;
 }
 
 export interface Routine {
