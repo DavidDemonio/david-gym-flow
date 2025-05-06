@@ -54,24 +54,32 @@ class EnvManager {
     try {
       // Try to fetch environment variables from the server API
       const response = await fetch('/api/env');
-      if (response.ok) {
-        const data = await response.json();
-        if (data.success && data.env) {
-          console.log('Environment variables loaded from server API');
-          // Merge with existing variables, prioritizing server values
-          this.variables = { ...this.variables, ...data.env };
-          this.saveToStorage();
-          
-          // Check if we need to update password fields from localStorage
-          const storedVars = localStorage.getItem('env_variables');
-          if (storedVars) {
-            const parsedVars = JSON.parse(storedVars);
-            if (parsedVars.MYSQL_PASSWORD) {
-              this.variables.MYSQL_PASSWORD = parsedVars.MYSQL_PASSWORD;
-            }
-            if (parsedVars.SMTP_PASSWORD) {
-              this.variables.SMTP_PASSWORD = parsedVars.SMTP_PASSWORD;
-            }
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      if (data.success && data.env) {
+        console.log('Environment variables loaded from server API');
+        // Merge with existing variables, prioritizing server values
+        this.variables = { ...this.variables, ...data.env };
+        this.saveToStorage();
+        
+        // Check if we need to update password fields from localStorage
+        const storedVars = localStorage.getItem('env_variables');
+        if (storedVars) {
+          const parsedVars = JSON.parse(storedVars);
+          if (parsedVars.MYSQL_PASSWORD) {
+            this.variables.MYSQL_PASSWORD = parsedVars.MYSQL_PASSWORD;
+          }
+          if (parsedVars.SMTP_PASSWORD) {
+            this.variables.SMTP_PASSWORD = parsedVars.SMTP_PASSWORD;
+          }
+          if (!this.variables.MYSQL_USER && parsedVars.MYSQL_USER) {
+            this.variables.MYSQL_USER = parsedVars.MYSQL_USER;
+          }
+          if (!this.variables.SMTP_USER && parsedVars.SMTP_USER) {
+            this.variables.SMTP_USER = parsedVars.SMTP_USER;
           }
         }
       }
@@ -151,10 +159,6 @@ class EnvManager {
   
   // Apply all variables to the app's environment
   private applyVariables(): void {
-    // This is where we would apply environment variables to the application
-    // In a real Node.js app, this might set process.env values
-    // In a browser app, we need to apply these variables to our services
-    
     console.log('Applying environment variables to application services');
     
     // Import is within the function to avoid circular reference
@@ -225,7 +229,13 @@ class EnvManager {
     this.variables = {};
     localStorage.removeItem('env_variables');
   }
+  
+  // Force re-fetch from server
+  public async refresh(): Promise<void> {
+    this.initialized = false;
+    this.initializing = false;
+    return this.initialize();
+  }
 }
 
 export const envManager = EnvManager.getInstance();
-

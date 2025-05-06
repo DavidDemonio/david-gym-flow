@@ -1,4 +1,3 @@
-
 /**
  * MySQL connection utility for the application
  * Handles connection to the database and provides CRUD operations
@@ -78,13 +77,13 @@ class MySQLConnection {
   private userProfile: UserProfile | null = null;
   private connected: boolean = false;
   private connectionLogs: string[] = [];
+  private connectionAttemptInProgress: boolean = false;
   
   private constructor() {
     // Get saved configuration from localStorage
     const savedConfig = localStorage.getItem('mysql_config');
     if (savedConfig) {
       this.config = JSON.parse(savedConfig);
-      this.initializeConnection();
     }
     
     // Get saved email configuration
@@ -98,6 +97,11 @@ class MySQLConnection {
     if (savedUserProfile) {
       this.userProfile = JSON.parse(savedUserProfile);
     }
+    
+    // Attempt to connect if we have config
+    if (this.config) {
+      this.initializeConnection();
+    }
   }
   
   public static getInstance(): MySQLConnection {
@@ -108,7 +112,9 @@ class MySQLConnection {
   }
   
   private async initializeConnection() {
-    if (!this.config) return;
+    if (!this.config || this.connectionAttemptInProgress) return;
+    
+    this.connectionAttemptInProgress = true;
     
     try {
       // For browser environment, we'll use the backend proxy approach
@@ -120,11 +126,20 @@ class MySQLConnection {
         body: JSON.stringify(this.config),
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
         this.connected = true;
         this.log(`MySQL connection initialized: ${this.config.host}:${this.config.port}`);
+        
+        // If we have a user profile, save it to the database
+        if (this.userProfile) {
+          await this.setUserProfile(this.userProfile);
+        }
       } else {
         this.connected = false;
         this.log(`Error initializing MySQL connection: ${result.error}`);
@@ -133,6 +148,8 @@ class MySQLConnection {
       this.connected = false;
       this.log(`Error initializing MySQL connection: ${err}`);
       console.error('MySQL connection error:', err);
+    } finally {
+      this.connectionAttemptInProgress = false;
     }
   }
   
@@ -169,27 +186,42 @@ class MySQLConnection {
     // If connected, save to database too
     if (this.connected && this.config) {
       try {
-        const response = await fetch('/api/mysql/save-user-profile', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            config: this.config,
-            profile
-          }),
-        });
-        
-        const result = await response.json();
-        if (!result.success) {
-          throw new Error(result.error);
-        }
+        await this.saveUserProfileToDb(profile);
       } catch (err) {
         console.error('Error saving user profile to database:', err);
       }
     }
     
     this.log(`User profile updated: ${profile.email}`);
+  }
+  
+  private async saveUserProfileToDb(profile: UserProfile): Promise<void> {
+    if (!this.config) return;
+    
+    try {
+      const response = await fetch('/api/mysql/save-user-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.config,
+          profile
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      console.error('Error saving user profile to database:', err);
+      throw err;
+    }
   }
   
   public getUserProfile(): UserProfile | null {
@@ -382,6 +414,10 @@ class MySQLConnection {
         }),
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
@@ -465,6 +501,10 @@ class MySQLConnection {
         }),
       });
       
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
       const result = await response.json();
       
       if (result.success) {
@@ -547,6 +587,10 @@ class MySQLConnection {
           routines
         }),
       });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
       
       const result = await response.json();
       
@@ -665,29 +709,53 @@ class MySQLConnection {
     const vars = envManager.getAll();
     
     // Apply MySQL config if available
-    if (vars.MYSQL_HOST && vars.MYSQL_USER) {
-      await this.setConfig({
+    if (vars.MYSQL_HOST && vars.MYSQL_USER && vars.MYSQL_PASSWORD) {
+      const config = {
         host: vars.MYSQL_HOST,
         port: parseInt(vars.MYSQL_PORT || '3306'),
         user: vars.MYSQL_USER,
-        password: vars.MYSQL_PASSWORD || '',
+        password: vars.MYSQL_PASSWORD,
         database: vars.MYSQL_DATABASE || 'gymflow'
-      });
-      this.log('Loaded MySQL configuration from environment variables');
+      };
+      
+      // Only update if something changed
+      if (JSON.stringify(this.config) !== JSON.stringify(config)) {
+        await this.setConfig(config);
+        this.log('Loaded MySQL configuration from environment variables');
+      }
     }
     
     // Apply SMTP config if available
-    if (vars.SMTP_HOST && vars.SMTP_USER) {
-      await this.setEmailConfig({
+    if (vars.SMTP_HOST && vars.SMTP_USER && vars.SMTP_PASSWORD) {
+      const emailConfig = {
         smtpHost: vars.SMTP_HOST,
         smtpPort: parseInt(vars.SMTP_PORT || '587'),
         smtpUser: vars.SMTP_USER,
-        smtpPassword: vars.SMTP_PASSWORD || '',
+        smtpPassword: vars.SMTP_PASSWORD,
         fromEmail: vars.FROM_EMAIL || vars.SMTP_USER,
         secure: vars.SMTP_SECURE === 'true',
         secureType: (vars.SMTP_SECURE_TYPE as 'SSL' | 'TLS') || 'TLS'
-      });
-      this.log('Loaded SMTP configuration from environment variables');
+      };
+      
+      // Only update if something changed
+      if (JSON.stringify(this.emailConfig) !== JSON.stringify(emailConfig)) {
+        await this.setEmailConfig(emailConfig);
+        this.log('Loaded SMTP configuration from environment variables');
+      }
+    }
+  }
+  
+  // Force reconnect to database
+  public async reconnect(): Promise<boolean> {
+    if (!this.config) return false;
+    
+    try {
+      this.connected = false;
+      await this.initializeConnection();
+      return this.connected;
+    } catch (err) {
+      console.error('Error reconnecting to database:', err);
+      return false;
     }
   }
 }

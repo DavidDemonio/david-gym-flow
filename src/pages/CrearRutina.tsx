@@ -1,8 +1,10 @@
+
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ArrowRight, CheckCircle, Database } from 'lucide-react';
+import { Dumbbell, ArrowRight, CheckCircle, Database, RefreshCw } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { Exercise, mysqlConnection } from "../utils/mysqlConnection";
+import { Button } from "@/components/ui/button";
 
 const objetivos = [
   { id: 'fuerza', name: 'Fuerza', description: 'Aumentar tu fuerza y potencia muscular' },
@@ -38,6 +40,8 @@ const CrearRutina = () => {
   const [availableExercises, setAvailableExercises] = useState<Exercise[]>([]);
   // Estado para indicar si estamos conectados a la base de datos
   const [databaseConnected, setDatabaseConnected] = useState(false);
+  // Estado para indicar si estamos cargando
+  const [isLoading, setIsLoading] = useState(false);
 
   // Cargar ejercicios desde la base de datos al iniciar
   useEffect(() => {
@@ -46,21 +50,38 @@ const CrearRutina = () => {
       setDatabaseConnected(isConnected);
       
       if (isConnected) {
-        // Cargar ejercicios desde la base de datos
-        try {
-          const exercises = await mysqlConnection.getExercises();
-          if (exercises && exercises.length > 0) {
-            setAvailableExercises(exercises);
-            console.log("Ejercicios cargados desde MySQL:", exercises.length);
-          }
-        } catch (err) {
-          console.error("Error al cargar ejercicios:", err);
-        }
+        loadExercises();
       }
     };
     
     checkDatabaseConnection();
   }, []);
+
+  const loadExercises = async () => {
+    setIsLoading(true);
+    try {
+      const exercises = await mysqlConnection.getExercises();
+      if (exercises && exercises.length > 0) {
+        setAvailableExercises(exercises);
+        console.log("Ejercicios cargados desde MySQL:", exercises.length);
+      } else {
+        toast({
+          variant: "warning",
+          title: "No hay ejercicios",
+          description: "No se encontraron ejercicios en la base de datos",
+        });
+      }
+    } catch (err) {
+      console.error("Error al cargar ejercicios:", err);
+      toast({
+        variant: "destructive",
+        title: "Error de carga",
+        description: "Error al cargar ejercicios desde la base de datos",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const handleSelectObjetivo = (objetivo: string) => {
     setFormData({ ...formData, objetivo });
@@ -79,8 +100,41 @@ const CrearRutina = () => {
     setFormData({ ...formData, dias });
   };
 
+  const handleReconnectDatabase = async () => {
+    setIsLoading(true);
+    try {
+      await mysqlConnection.reconnect();
+      const connected = mysqlConnection.isConnected();
+      setDatabaseConnected(connected);
+      
+      if (connected) {
+        toast({
+          title: "Conexión establecida",
+          description: "Se ha conectado correctamente a la base de datos",
+        });
+        loadExercises();
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error de conexión",
+          description: "No se pudo conectar a la base de datos",
+        });
+      }
+    } catch (err) {
+      console.error("Error al reconectar:", err);
+      toast({
+        variant: "destructive",
+        title: "Error de conexión",
+        description: "Error al intentar conectar con la base de datos",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setIsLoading(true);
     
     // Validación básica
     if (!formData.objetivo || !formData.nivel || !formData.equipamiento) {
@@ -89,6 +143,7 @@ const CrearRutina = () => {
         title: "Error en el formulario",
         description: "Por favor completa todos los campos",
       });
+      setIsLoading(false);
       return;
     }
     
@@ -107,6 +162,7 @@ const CrearRutina = () => {
       
       // Redireccionar a la página de rutina
       navigate('/mi-rutina', { state: { formData } });
+      setIsLoading(false);
     }
   };
   
@@ -153,12 +209,15 @@ const CrearRutina = () => {
           const difficultyMatch = !ex.difficulty || ex.difficulty === difficultyLevel;
           
           // Verificar grupo muscular
-          const muscleMatch = ex.muscleGroups.some(mg => dayConfig.focus.includes(mg));
+          let muscleMatch = false;
+          if (Array.isArray(ex.muscleGroups)) {
+            muscleMatch = ex.muscleGroups.some(mg => dayConfig.focus.includes(mg));
+          }
           
           // Verificar equipamiento
           let equipmentMatch = false;
           
-          if (!ex.equipment) {
+          if (!ex.equipment || ex.equipment.length === 0) {
             equipmentMatch = true; // Sin requisitos de equipo
           } else if (formData.equipamiento === 'completo') {
             equipmentMatch = true; // Tenemos todo el equipo disponible
@@ -166,7 +225,7 @@ const CrearRutina = () => {
             // Verificar si alguna de las opciones de equipo coincide
             equipmentMatch = ex.equipment.includes("Sin equipo") || ex.equipment.includes(equipmentType);
           } else {
-            // Si equipment es un string individual
+            // Si equipment no es un array
             equipmentMatch = ex.equipment === "Sin equipo" || ex.equipment === equipmentType;
           }
           
@@ -189,7 +248,7 @@ const CrearRutina = () => {
               // Verificar si alguna de las opciones de equipo coincide
               equipmentMatch = ex.equipment.includes("Sin equipo") || ex.equipment.includes(equipmentType);
             } else {
-              // Si equipment es un string individual
+              // Si equipment no es un array
               equipmentMatch = ex.equipment === "Sin equipo" || ex.equipment === equipmentType;
             }
             
@@ -197,7 +256,7 @@ const CrearRutina = () => {
           });
           
           // Añadir ejercicios genéricos hasta tener al menos 4
-          filteredExercises = [...filteredExercises, ...genericExercises.slice(0, 4 - filteredExercises.length)];
+          filteredExercises = [...filteredExercises, ...genericExercises.slice(0, Math.max(4 - filteredExercises.length, 0))];
         }
         
         // Limitar a 5 ejercicios por día como máximo
@@ -221,20 +280,23 @@ const CrearRutina = () => {
       // Guardar en localStorage y en la "base de datos"
       localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
       
+      // Intentar guardar en la base de datos
+      const routineToSave = {
+        name: "Mi Rutina Personalizada",
+        objetivo: formData.objetivo,
+        nivel: formData.nivel,
+        equipamiento: formData.equipamiento,
+        dias: formData.dias,
+        exercises: routineData
+      };
+      
       if (mysqlConnection.isConnected()) {
-        await mysqlConnection.saveRoutine({
-          name: "Mi Rutina Personalizada",
-          objetivo: formData.objetivo,
-          nivel: formData.nivel,
-          equipamiento: formData.equipamiento,
-          dias: formData.dias,
-          exercises: routineData
-        });
+        await mysqlConnection.saveRoutine(routineToSave);
       }
       
       toast({
         title: "¡Rutina creada!",
-        description: "Tu rutina personalizada se ha generado con éxito desde la base de datos.",
+        description: "Tu rutina personalizada se ha generado con éxito",
       });
       
       // Redireccionar a la página de rutina
@@ -246,6 +308,8 @@ const CrearRutina = () => {
         title: "Error al generar rutina",
         description: "Ocurrió un error al generar tu rutina. Inténtalo de nuevo.",
       });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -254,12 +318,25 @@ const CrearRutina = () => {
       <div className="max-w-3xl mx-auto">
         <div className="flex justify-between items-center mb-4">
           <h1 className="text-3xl font-bold mb-2 gradient-text">Crear Rutina Personalizada</h1>
-          {databaseConnected && availableExercises.length > 0 && (
-            <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
-              <Database className="h-4 w-4 mr-1" />
-              <span>MySQL conectado ({availableExercises.length} ejercicios)</span>
-            </div>
-          )}
+          <div className="flex items-center gap-2">
+            {databaseConnected && availableExercises.length > 0 ? (
+              <div className="flex items-center text-green-600 dark:text-green-400 text-sm">
+                <Database className="h-4 w-4 mr-1" />
+                <span>MySQL conectado ({availableExercises.length} ejercicios)</span>
+              </div>
+            ) : (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="flex items-center gap-1 text-xs" 
+                onClick={handleReconnectDatabase}
+                disabled={isLoading}
+              >
+                {isLoading ? <RefreshCw className="h-3 w-3 animate-spin mr-1" /> : <Database className="h-3 w-3 mr-1" />}
+                {databaseConnected ? "Recargar ejercicios" : "Conectar a MySQL"}
+              </Button>
+            )}
+          </div>
         </div>
         <p className="text-gray-600 mb-8">Completa la información para generar tu rutina perfecta</p>
         
@@ -385,8 +462,14 @@ const CrearRutina = () => {
             <button
               type="submit"
               className="gradient-btn px-8 py-3 text-lg flex items-center"
+              disabled={isLoading}
             >
-              {databaseConnected && availableExercises.length > 0 ? (
+              {isLoading ? (
+                <>
+                  Generando Rutina
+                  <RefreshCw className="ml-2 h-5 w-5 animate-spin" />
+                </>
+              ) : databaseConnected && availableExercises.length > 0 ? (
                 <>
                   Generar Mi Rutina desde MySQL
                   <Database className="ml-2 h-5 w-5" />

@@ -19,15 +19,26 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
    ```
 
 2. Este script te guiará para configurar:
-   - Conexión a MySQL
+   - Conexión a MySQL (intentará crear la base de datos si no existe)
    - Conexión SMTP para envío de correos (con soporte para SSL/TLS)
    - Tu perfil de usuario
    - Instalará todas las dependencias necesarias
    - Construirá la aplicación frontend
+   - Creará un archivo .env con todas las configuraciones
 
 3. Una vez configurado, inicia el servidor:
    ```bash
+   # Para desarrollo
+   npm run dev
+   
+   # Para producción
    node api/server.js
+   
+   # Para producción con PM2 (recomendado)
+   npm install -g pm2
+   pm2 start api/server.js --name "gymflow"
+   pm2 startup
+   pm2 save
    ```
 
 4. La aplicación estará disponible en: http://localhost:3000
@@ -40,6 +51,16 @@ El sistema crea automáticamente las siguientes tablas:
 - `exercises`: Almacena ejercicios personalizados
 - `routines`: Almacena rutinas de entrenamiento
 - `user_profiles`: Almacena perfiles de usuario
+
+## Inicialización de datos
+
+El sistema inicializará automáticamente:
+
+1. El perfil de usuario configurado durante la instalación
+2. Un conjunto de ejercicios básicos predefinidos
+3. Un conjunto de equipamiento básico predefinido
+
+Estos datos se cargarán automáticamente la primera vez que se inicie el servidor si las tablas están vacías.
 
 ## Funcionamiento en Producción
 
@@ -122,3 +143,11 @@ Para actualizar la aplicación:
    ```bash
    pm2 restart gymflow
    ```
+
+## Acceso a la Configuración en la Interfaz Web
+
+Una vez que la aplicación esté en funcionamiento, puedes acceder a la configuración desde:
+
+1. Menú principal > Ajustes
+2. En la sección "Variables de Entorno (.env)" podrás ver y editar todas las configuraciones
+3. Los cambios realizados en la interfaz web se aplicarán inmediatamente al sistema

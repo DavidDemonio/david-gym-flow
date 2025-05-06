@@ -83,6 +83,32 @@ echo -e "\n${BLUE}User Profile Configuration${NC}"
 read -p "Your Name: " USER_NAME
 read -p "Your Email: " USER_EMAIL
 
+# Create MySQL Database if it doesn't exist
+echo -e "\n${YELLOW}Checking MySQL database...${NC}"
+if command -v mysql &> /dev/null; then
+    # Check if we can connect without a password
+    if mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e ";" &> /dev/null; then
+        echo -e "${GREEN}MySQL connection successful.${NC}"
+        
+        # Check if database exists
+        if ! mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "USE $MYSQL_DATABASE" &> /dev/null; then
+            echo -e "${YELLOW}Database '$MYSQL_DATABASE' does not exist. Creating it...${NC}"
+            mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "CREATE DATABASE $MYSQL_DATABASE"
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}Database created successfully.${NC}"
+            else
+                echo -e "${RED}Failed to create database. Please create it manually.${NC}"
+            fi
+        else
+            echo -e "${GREEN}Database '$MYSQL_DATABASE' already exists.${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Could not connect to MySQL. You may need to create the database manually.${NC}"
+    fi
+else
+    echo -e "${YELLOW}MySQL client not found. You may need to create the database manually.${NC}"
+fi
+
 # Create .env file
 echo "# GymFlow App Configuration" > $ENV_FILE
 echo "# Generated on $(date)" >> $ENV_FILE
@@ -122,9 +148,6 @@ echo -e "\n${YELLOW}Installing backend dependencies...${NC}"
 cd api && npm install && cd ..
 
 echo -e "${GREEN}GymFlow app setup completed successfully!${NC}"
-echo -e "\n${BLUE}To start the application:${NC}"
-echo -e "Just run: ${YELLOW}node api/server.js${NC}"
-echo -e "\nThe app will be available at: ${GREEN}http://localhost:3000${NC}"
 
 # Save user profile
 cat > user_profile.json << EOF
@@ -137,4 +160,15 @@ EOF
 
 echo -e "\n${BLUE}User profile saved to user_profile.json${NC}"
 echo -e "${YELLOW}This file will be imported automatically when the app starts.${NC}"
+
+echo -e "\n${BLUE}To start the application:${NC}"
+echo -e "For development: ${YELLOW}npm run dev${NC}"
+echo -e "For production: ${YELLOW}node api/server.js${NC}"
+echo -e "\nFor production use, we recommend using PM2:${NC}"
+echo -e "${YELLOW}npm install -g pm2${NC}"
+echo -e "${YELLOW}pm2 start api/server.js --name \"gymflow\"${NC}"
+echo -e "${YELLOW}pm2 startup${NC} (to enable startup on boot)"
+echo -e "${YELLOW}pm2 save${NC} (to save the current process list)"
+
+echo -e "\nThe app will be available at: ${GREEN}http://localhost:3000${NC}"
 echo -e "${BLUE}=========================================${NC}"

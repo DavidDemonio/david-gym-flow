@@ -174,21 +174,27 @@ app.post('/api/email/send', async (req, res) => {
 
 // Add an endpoint to get environment variables
 app.get('/api/env', (req, res) => {
-  // Only return non-sensitive environment variables
-  const safeEnv = {
-    MYSQL_HOST: process.env.MYSQL_HOST,
-    MYSQL_PORT: process.env.MYSQL_PORT,
-    MYSQL_DATABASE: process.env.MYSQL_DATABASE,
-    SMTP_HOST: process.env.SMTP_HOST,
-    SMTP_PORT: process.env.SMTP_PORT,
-    FROM_EMAIL: process.env.FROM_EMAIL,
-    SMTP_SECURE: process.env.SMTP_SECURE,
-    SMTP_SECURE_TYPE: process.env.SMTP_SECURE_TYPE,
-    APP_NAME: process.env.APP_NAME,
-    DEBUG_MODE: process.env.DEBUG_MODE
-  };
-  
-  res.json({ success: true, env: safeEnv });
+  try {
+    // Only return non-sensitive environment variables
+    const safeEnv = {
+      MYSQL_HOST: process.env.MYSQL_HOST,
+      MYSQL_PORT: process.env.MYSQL_PORT,
+      MYSQL_DATABASE: process.env.MYSQL_DATABASE,
+      MYSQL_USER: process.env.MYSQL_USER,
+      SMTP_HOST: process.env.SMTP_HOST,
+      SMTP_PORT: process.env.SMTP_PORT,
+      FROM_EMAIL: process.env.FROM_EMAIL,
+      SMTP_SECURE: process.env.SMTP_SECURE,
+      SMTP_SECURE_TYPE: process.env.SMTP_SECURE_TYPE,
+      APP_NAME: process.env.APP_NAME,
+      DEBUG_MODE: process.env.DEBUG_MODE
+    };
+    
+    res.json({ success: true, env: safeEnv });
+  } catch (error) {
+    logger.error('Error getting environment variables:', error);
+    res.json({ success: false, error: error.message });
+  }
 });
 
 // Catch-all handler for SPA routing
@@ -204,6 +210,48 @@ app.listen(port, () => {
   // Log MySQL connection info (without password)
   if (process.env.MYSQL_HOST) {
     logger.info(`MySQL configured: ${process.env.MYSQL_HOST}:${process.env.MYSQL_PORT || '3306'}`);
+    
+    // Initialize database with default data if available
+    const userProfilePath = path.resolve(process.cwd(), 'user_profile.json');
+    if (fs.existsSync(userProfilePath)) {
+      try {
+        const userProfileData = JSON.parse(fs.readFileSync(userProfilePath, 'utf8'));
+        logger.info(`Found user profile data, attempting to initialize database...`);
+        
+        // Connect to database using environment variables
+        mysql.connectToDatabase({
+          host: process.env.MYSQL_HOST,
+          port: process.env.MYSQL_PORT || 3306,
+          user: process.env.MYSQL_USER,
+          password: process.env.MYSQL_PASSWORD,
+          database: process.env.MYSQL_DATABASE
+        }).then(result => {
+          if (result.success) {
+            // Save user profile
+            mysql.saveUserProfile({
+              host: process.env.MYSQL_HOST,
+              port: process.env.MYSQL_PORT || 3306,
+              user: process.env.MYSQL_USER,
+              password: process.env.MYSQL_PASSWORD,
+              database: process.env.MYSQL_DATABASE
+            }, userProfileData).then(() => {
+              logger.info('User profile initialized successfully');
+            }).catch(err => {
+              logger.error('Failed to initialize user profile:', err);
+            });
+            
+            // Initialize default exercises and equipment (this will be added by the setup script)
+            mysql.initializeDefaultData().catch(err => {
+              logger.error('Failed to initialize default data:', err);
+            });
+          }
+        }).catch(err => {
+          logger.error('Failed to connect to database for initialization:', err);
+        });
+      } catch (err) {
+        logger.error('Failed to load user profile data:', err);
+      }
+    }
   }
   
   // Log SMTP connection info (without password)

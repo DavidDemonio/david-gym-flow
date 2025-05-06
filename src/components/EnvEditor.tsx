@@ -18,12 +18,34 @@ const EnvEditor: React.FC = () => {
   const [variables, setVariables] = useState<EnvVariables>({});
   const [envContent, setEnvContent] = useState<string>('');
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [isLoading, setIsLoading] = useState(false);
   
   useEffect(() => {
     // Load variables on component mount
-    setVariables(envManager.getAll());
-    setEnvContent(envManager.exportToEnvFormat());
+    loadVariables();
   }, []);
+  
+  const loadVariables = async () => {
+    setIsLoading(true);
+    try {
+      // Try to refresh environment variables from server first
+      await envManager.refresh();
+      
+      // Then get the latest variables
+      const vars = envManager.getAll();
+      setVariables(vars);
+      setEnvContent(envManager.exportToEnvFormat());
+    } catch (err) {
+      console.error('Error loading environment variables:', err);
+      toast({
+        variant: "destructive",
+        title: "Error al cargar variables",
+        description: "No se pudieron cargar las variables de entorno",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
   
   // Handle variable changes
   const handleVariableChange = (key: string, value: string) => {
@@ -41,6 +63,13 @@ const EnvEditor: React.FC = () => {
       
       // Refresh the env content display
       setEnvContent(envManager.exportToEnvFormat());
+      
+      // Try to reconnect to database with new settings
+      if (mysqlConnection.isConnected()) {
+        await mysqlConnection.reconnect();
+      } else {
+        await mysqlConnection.loadEnvVariables();
+      }
       
       setSaveStatus('saved');
       toast({
@@ -113,6 +142,29 @@ const EnvEditor: React.FC = () => {
     });
   };
   
+  // Refresh variables from server
+  const handleRefreshVariables = async () => {
+    setIsLoading(true);
+    try {
+      await envManager.refresh();
+      setVariables(envManager.getAll());
+      setEnvContent(envManager.exportToEnvFormat());
+      toast({
+        title: "Variables actualizadas",
+        description: "Se han cargado las variables de entorno desde el servidor.",
+      });
+    } catch (err) {
+      console.error('Error refreshing variables:', err);
+      toast({
+        variant: "destructive",
+        title: "Error al actualizar",
+        description: "No se pudieron actualizar las variables desde el servidor.",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   // Render save button with appropriate status
   const renderSaveButton = () => {
     switch (saveStatus) {
@@ -139,7 +191,7 @@ const EnvEditor: React.FC = () => {
         );
       default:
         return (
-          <Button onClick={handleSaveVariables} className="flex items-center gap-1">
+          <Button onClick={handleSaveVariables} className="flex items-center gap-1" disabled={isLoading}>
             <Save className="h-4 w-4" />
             Guardar Variables
           </Button>
@@ -152,7 +204,10 @@ const EnvEditor: React.FC = () => {
       <CardHeader>
         <div className="flex items-center justify-between">
           <div>
-            <CardTitle>Variables de Entorno (.env)</CardTitle>
+            <CardTitle className="flex items-center gap-2">
+              Variables de Entorno (.env)
+              {isLoading && <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />}
+            </CardTitle>
             <CardDescription>
               Configure las variables de entorno para su aplicación
             </CardDescription>
@@ -263,6 +318,31 @@ const EnvEditor: React.FC = () => {
                         onChange={(e) => handleVariableChange('FROM_EMAIL', e.target.value)} 
                       />
                     </div>
+                    <div>
+                      <Label htmlFor="smtp_secure">Conexión Segura</Label>
+                      <select
+                        id="smtp_secure"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                        value={variables.SMTP_SECURE || 'false'}
+                        onChange={(e) => handleVariableChange('SMTP_SECURE', e.target.value)}
+                      >
+                        <option value="true">Sí</option>
+                        <option value="false">No</option>
+                      </select>
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_secure_type">Tipo Seguridad</Label>
+                      <select
+                        id="smtp_secure_type"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                        value={variables.SMTP_SECURE_TYPE || 'TLS'}
+                        onChange={(e) => handleVariableChange('SMTP_SECURE_TYPE', e.target.value)}
+                        disabled={variables.SMTP_SECURE !== 'true'}
+                      >
+                        <option value="TLS">TLS</option>
+                        <option value="SSL">SSL</option>
+                      </select>
+                    </div>
                   </div>
                 </div>
                 
@@ -279,11 +359,15 @@ const EnvEditor: React.FC = () => {
                     </div>
                     <div>
                       <Label htmlFor="debug_mode">Modo Debug</Label>
-                      <Input 
-                        id="debug_mode" 
-                        value={variables.DEBUG_MODE || 'false'} 
-                        onChange={(e) => handleVariableChange('DEBUG_MODE', e.target.value)} 
-                      />
+                      <select
+                        id="debug_mode"
+                        className="w-full rounded-md border border-input bg-background px-3 py-2"
+                        value={variables.DEBUG_MODE || 'false'}
+                        onChange={(e) => handleVariableChange('DEBUG_MODE', e.target.value)}
+                      >
+                        <option value="true">Activado</option>
+                        <option value="false">Desactivado</option>
+                      </select>
                     </div>
                   </div>
                 </div>
@@ -299,7 +383,7 @@ const EnvEditor: React.FC = () => {
                 className="font-mono text-xs min-h-[300px]" 
               />
               <div className="flex justify-end space-x-2">
-                <Button onClick={handleImportEnv} className="flex items-center gap-1">
+                <Button onClick={handleImportEnv} className="flex items-center gap-1" disabled={isLoading}>
                   <Upload className="h-4 w-4" />
                   Importar y Aplicar
                 </Button>
@@ -310,10 +394,17 @@ const EnvEditor: React.FC = () => {
       </CardContent>
       
       <CardFooter className="border-t pt-4 flex justify-between">
-        <Button onClick={handleDownloadEnv} variant="outline" className="flex items-center gap-1">
-          <Download className="h-4 w-4" />
-          Descargar .env
-        </Button>
+        <div className="flex gap-2">
+          <Button onClick={handleDownloadEnv} variant="outline" className="flex items-center gap-1" disabled={isLoading}>
+            <Download className="h-4 w-4" />
+            Descargar .env
+          </Button>
+          
+          <Button onClick={handleRefreshVariables} variant="outline" className="flex items-center gap-1" disabled={isLoading}>
+            <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+            Actualizar desde servidor
+          </Button>
+        </div>
         
         {renderSaveButton()}
       </CardFooter>

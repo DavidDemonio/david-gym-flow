@@ -1,9 +1,216 @@
-
 import mysql from 'mysql2/promise';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import { createLogger } from './logger.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const logger = createLogger('mysql');
 let connection = null;
+
+// Default data for the application
+const defaultExercises = [
+  {
+    name: "Press de banca",
+    muscleGroups: ["Pecho", "Tríceps"],
+    equipment: ["Barra", "Banco"],
+    description: "Ejercicio básico para pecho",
+    difficulty: "Intermedio",
+    sets: 4,
+    reps: "8-12",
+    rest: "90s",
+    calories: 5,
+    caloriesPerRep: 0.5,
+    emoji: "💪",
+    requiresGym: true,
+    videoUrl: ""
+  },
+  {
+    name: "Sentadillas",
+    muscleGroups: ["Piernas", "Glúteos"],
+    equipment: ["Barra"],
+    description: "Ejercicio básico para piernas",
+    difficulty: "Intermedio",
+    sets: 4,
+    reps: "8-12",
+    rest: "120s",
+    calories: 8,
+    caloriesPerRep: 0.8,
+    emoji: "🦵",
+    requiresGym: false,
+    videoUrl: ""
+  },
+  {
+    name: "Dominadas",
+    muscleGroups: ["Espalda", "Bíceps"],
+    equipment: ["Barra de dominadas"],
+    description: "Ejercicio para espalda y brazos",
+    difficulty: "Avanzado",
+    sets: 4,
+    reps: "6-10",
+    rest: "90s",
+    calories: 6,
+    caloriesPerRep: 0.7,
+    emoji: "🏋️",
+    requiresGym: false,
+    videoUrl: ""
+  },
+  {
+    name: "Curl de bíceps",
+    muscleGroups: ["Bíceps"],
+    equipment: ["Mancuernas"],
+    description: "Ejercicio de aislamiento para bíceps",
+    difficulty: "Principiante",
+    sets: 3,
+    reps: "10-15",
+    rest: "60s",
+    calories: 3,
+    caloriesPerRep: 0.3,
+    emoji: "💪",
+    requiresGym: false,
+    videoUrl: ""
+  },
+  {
+    name: "Extensión de tríceps",
+    muscleGroups: ["Tríceps"],
+    equipment: ["Polea", "Barra"],
+    description: "Ejercicio de aislamiento para tríceps",
+    difficulty: "Principiante",
+    sets: 3,
+    reps: "10-15",
+    rest: "60s",
+    calories: 3,
+    caloriesPerRep: 0.3,
+    emoji: "💪",
+    requiresGym: true,
+    videoUrl: ""
+  },
+  {
+    name: "Remo con barra",
+    muscleGroups: ["Espalda"],
+    equipment: ["Barra"],
+    description: "Ejercicio compuesto para espalda",
+    difficulty: "Intermedio",
+    sets: 4,
+    reps: "8-12",
+    rest: "90s",
+    calories: 6,
+    caloriesPerRep: 0.6,
+    emoji: "🏋️",
+    requiresGym: true,
+    videoUrl: ""
+  },
+  {
+    name: "Plancha",
+    muscleGroups: ["Core", "Abdominales"],
+    equipment: ["Sin equipo"],
+    description: "Ejercicio isométrico para core",
+    difficulty: "Principiante",
+    sets: 3,
+    reps: "30-60s",
+    rest: "60s",
+    calories: 4,
+    caloriesPerRep: 0,
+    emoji: "🧘",
+    requiresGym: false,
+    videoUrl: ""
+  },
+  {
+    name: "Peso muerto",
+    muscleGroups: ["Espalda", "Piernas", "Glúteos"],
+    equipment: ["Barra"],
+    description: "Ejercicio compuesto para todo el cuerpo",
+    difficulty: "Avanzado",
+    sets: 4,
+    reps: "6-10",
+    rest: "120s",
+    calories: 9,
+    caloriesPerRep: 0.9,
+    emoji: "🏋️",
+    requiresGym: true,
+    videoUrl: ""
+  },
+  {
+    name: "Press militar",
+    muscleGroups: ["Hombros", "Tríceps"],
+    equipment: ["Barra", "Mancuernas"],
+    description: "Ejercicio compuesto para hombros",
+    difficulty: "Intermedio",
+    sets: 4,
+    reps: "8-12",
+    rest: "90s",
+    calories: 5,
+    caloriesPerRep: 0.5,
+    emoji: "💪",
+    requiresGym: true,
+    videoUrl: ""
+  },
+  {
+    name: "Elevaciones laterales",
+    muscleGroups: ["Hombros"],
+    equipment: ["Mancuernas"],
+    description: "Ejercicio de aislamiento para hombros",
+    difficulty: "Principiante",
+    sets: 3,
+    reps: "12-15",
+    rest: "60s",
+    calories: 3,
+    caloriesPerRep: 0.2,
+    emoji: "🤸",
+    requiresGym: false,
+    videoUrl: ""
+  }
+];
+
+const defaultEquipment = [
+  {
+    name: "Mancuernas",
+    muscleGroups: ["Todo el cuerpo"],
+    description: "Pesas libres para ejercicios variados",
+    image: "",
+    emoji: "🏋️",
+    category: "Peso libre",
+    caloriesPerHour: 300
+  },
+  {
+    name: "Barra olímpica",
+    muscleGroups: ["Todo el cuerpo"],
+    description: "Barra de 20kg para ejercicios compuestos",
+    image: "",
+    emoji: "🏋️",
+    category: "Peso libre",
+    caloriesPerHour: 350
+  },
+  {
+    name: "Máquina de press",
+    muscleGroups: ["Pecho", "Hombros", "Tríceps"],
+    description: "Máquina para ejercicios de press",
+    image: "",
+    emoji: "🏋️",
+    category: "Máquina",
+    caloriesPerHour: 250
+  },
+  {
+    name: "Máquina de polea",
+    muscleGroups: ["Espalda", "Bíceps", "Tríceps"],
+    description: "Sistema de poleas para ejercicios variados",
+    image: "",
+    emoji: "🏋️",
+    category: "Máquina",
+    caloriesPerHour: 280
+  },
+  {
+    name: "Banco ajustable",
+    muscleGroups: ["Todo el cuerpo"],
+    description: "Banco con diferentes posiciones de inclinación",
+    image: "",
+    emoji: "🛋️",
+    category: "Accesorio",
+    caloriesPerHour: 0
+  }
+];
 
 async function connectToDatabase(config) {
   try {
@@ -143,6 +350,38 @@ async function ensureTablesExist() {
   } catch (error) {
     logger.error('Error ensuring tables exist:', error);
     throw error;
+  }
+}
+
+// Initialize database with default data
+async function initializeDefaultData() {
+  if (!connection) {
+    throw new Error('Not connected to database');
+  }
+  
+  try {
+    // Check if exercises table is empty
+    const [exerciseRows] = await connection.execute('SELECT COUNT(*) as count FROM exercises');
+    if (exerciseRows[0].count === 0) {
+      logger.info('Exercises table is empty, adding default exercises');
+      await saveExercises({}, defaultExercises);
+    } else {
+      logger.info(`Exercises table already has ${exerciseRows[0].count} records, skipping default data`);
+    }
+    
+    // Check if equipment table is empty
+    const [equipmentRows] = await connection.execute('SELECT COUNT(*) as count FROM equipment');
+    if (equipmentRows[0].count === 0) {
+      logger.info('Equipment table is empty, adding default equipment');
+      await saveEquipment({}, defaultEquipment);
+    } else {
+      logger.info(`Equipment table already has ${equipmentRows[0].count} records, skipping default data`);
+    }
+    
+    return { success: true };
+  } catch (error) {
+    logger.error('Error initializing default data:', error);
+    return { success: false, error: error.message };
   }
 }
 
@@ -429,5 +668,6 @@ export {
   saveRoutines,
   getRoutines,
   saveUserProfile,
-  getUserProfile
+  getUserProfile,
+  initializeDefaultData
 };
