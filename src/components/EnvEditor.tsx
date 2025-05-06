@@ -1,0 +1,249 @@
+
+import React, { useState, useEffect } from 'react';
+import { envManager, EnvVariables } from '../utils/envManager';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Download, Upload, Save, RefreshCw } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+
+const EnvEditor: React.FC = () => {
+  const { toast } = useToast();
+  const [variables, setVariables] = useState<EnvVariables>({});
+  const [envContent, setEnvContent] = useState<string>('');
+  
+  useEffect(() => {
+    // Load variables on component mount
+    setVariables(envManager.getAll());
+    setEnvContent(envManager.exportToEnvFormat());
+  }, []);
+  
+  // Handle variable changes
+  const handleVariableChange = (key: string, value: string) => {
+    setVariables(prev => ({ ...prev, [key]: value }));
+  };
+  
+  // Save all variables
+  const handleSaveVariables = () => {
+    envManager.setAll(variables);
+    toast({
+      title: "Variables guardadas",
+      description: "Las variables de entorno han sido actualizadas.",
+    });
+    
+    // Refresh the env content display
+    setEnvContent(envManager.exportToEnvFormat());
+  };
+  
+  // Import variables from .env format
+  const handleImportEnv = () => {
+    if (envManager.importFromEnvFormat(envContent)) {
+      setVariables(envManager.getAll());
+      toast({
+        title: "Variables importadas",
+        description: "Las variables de entorno han sido importadas correctamente.",
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error de importación",
+        description: "Hubo un problema al importar las variables. Verifique el formato.",
+      });
+    }
+  };
+  
+  // Generate a .env file for download
+  const handleDownloadEnv = () => {
+    const content = envManager.exportToEnvFormat();
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = '.env';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Archivo .env descargado",
+      description: "Se ha descargado el archivo .env con las variables configuradas.",
+    });
+  };
+  
+  return (
+    <Card className="shadow-md">
+      <CardHeader>
+        <CardTitle>Variables de Entorno (.env)</CardTitle>
+        <CardDescription>
+          Configure las variables de entorno para su aplicación
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="form">
+          <TabsList className="mb-4">
+            <TabsTrigger value="form">Formulario</TabsTrigger>
+            <TabsTrigger value="raw">.env Texto</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="form">
+            <ScrollArea className="h-[300px] pr-4">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <h3 className="text-md font-semibold">MySQL</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="mysql_host">Host</Label>
+                      <Input 
+                        id="mysql_host" 
+                        value={variables.MYSQL_HOST || ''} 
+                        onChange={(e) => handleVariableChange('MYSQL_HOST', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mysql_port">Puerto</Label>
+                      <Input 
+                        id="mysql_port" 
+                        value={variables.MYSQL_PORT || '3306'} 
+                        onChange={(e) => handleVariableChange('MYSQL_PORT', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mysql_user">Usuario</Label>
+                      <Input 
+                        id="mysql_user" 
+                        value={variables.MYSQL_USER || ''} 
+                        onChange={(e) => handleVariableChange('MYSQL_USER', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="mysql_password">Contraseña</Label>
+                      <Input 
+                        id="mysql_password" 
+                        type="password"
+                        value={variables.MYSQL_PASSWORD || ''} 
+                        onChange={(e) => handleVariableChange('MYSQL_PASSWORD', e.target.value)} 
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="mysql_database">Base de datos</Label>
+                      <Input 
+                        id="mysql_database" 
+                        value={variables.MYSQL_DATABASE || 'gymflow'} 
+                        onChange={(e) => handleVariableChange('MYSQL_DATABASE', e.target.value)} 
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-md font-semibold">SMTP</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="smtp_host">Host</Label>
+                      <Input 
+                        id="smtp_host" 
+                        value={variables.SMTP_HOST || ''} 
+                        onChange={(e) => handleVariableChange('SMTP_HOST', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_port">Puerto</Label>
+                      <Input 
+                        id="smtp_port" 
+                        value={variables.SMTP_PORT || '587'} 
+                        onChange={(e) => handleVariableChange('SMTP_PORT', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_user">Usuario</Label>
+                      <Input 
+                        id="smtp_user" 
+                        value={variables.SMTP_USER || ''} 
+                        onChange={(e) => handleVariableChange('SMTP_USER', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="smtp_password">Contraseña</Label>
+                      <Input 
+                        id="smtp_password" 
+                        type="password"
+                        value={variables.SMTP_PASSWORD || ''} 
+                        onChange={(e) => handleVariableChange('SMTP_PASSWORD', e.target.value)} 
+                      />
+                    </div>
+                    <div className="col-span-2">
+                      <Label htmlFor="from_email">Email Remitente</Label>
+                      <Input 
+                        id="from_email" 
+                        value={variables.FROM_EMAIL || ''} 
+                        onChange={(e) => handleVariableChange('FROM_EMAIL', e.target.value)} 
+                      />
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <h3 className="text-md font-semibold">Aplicación</h3>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label htmlFor="app_name">Nombre</Label>
+                      <Input 
+                        id="app_name" 
+                        value={variables.APP_NAME || 'GymFlow'} 
+                        onChange={(e) => handleVariableChange('APP_NAME', e.target.value)} 
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="debug_mode">Modo Debug</Label>
+                      <Input 
+                        id="debug_mode" 
+                        value={variables.DEBUG_MODE || 'false'} 
+                        onChange={(e) => handleVariableChange('DEBUG_MODE', e.target.value)} 
+                      />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          </TabsContent>
+          
+          <TabsContent value="raw">
+            <div className="space-y-4">
+              <Textarea 
+                value={envContent} 
+                onChange={(e) => setEnvContent(e.target.value)} 
+                className="font-mono text-xs min-h-[300px]" 
+              />
+              <div className="flex justify-end space-x-2">
+                <Button onClick={handleImportEnv} className="flex items-center gap-1">
+                  <Upload className="h-4 w-4" />
+                  Importar
+                </Button>
+              </div>
+            </div>
+          </TabsContent>
+        </Tabs>
+      </CardContent>
+      
+      <CardFooter className="border-t pt-4 flex justify-between">
+        <Button onClick={handleDownloadEnv} variant="outline" className="flex items-center gap-1">
+          <Download className="h-4 w-4" />
+          Descargar .env
+        </Button>
+        
+        <Button onClick={handleSaveVariables} className="flex items-center gap-1">
+          <Save className="h-4 w-4" />
+          Guardar Variables
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+};
+
+export default EnvEditor;

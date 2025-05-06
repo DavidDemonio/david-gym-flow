@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, ArrowRight, CheckCircle, Database } from 'lucide-react';
@@ -153,7 +152,12 @@ const CrearRutina = () => {
           // Filtrar por dificultad si está disponible
           (!ex.difficulty || ex.difficulty === difficultyLevel) &&
           // Filtrar por equipamiento si está disponible
-          (!ex.equipment || (formData.equipamiento === 'completo' || ex.equipment === equipmentType || ex.equipment === "Sin equipo")) &&
+          (!ex.equipment || 
+           (formData.equipamiento === 'completo') || 
+           (Array.isArray(ex.equipment) && ex.equipment.includes(equipmentType)) || 
+           (typeof ex.equipment === 'string' && ex.equipment === equipmentType) || 
+           (Array.isArray(ex.equipment) && ex.equipment.includes("Sin equipo")) ||
+           (typeof ex.equipment === 'string' && ex.equipment === "Sin equipo")) &&
           // Filtrar por grupo muscular
           ex.muscleGroups.some(mg => dayConfig.focus.includes(mg))
         );
@@ -162,7 +166,12 @@ const CrearRutina = () => {
         if (filteredExercises.length < 4) {
           const genericExercises = availableExercises.filter(ex => 
             !filteredExercises.includes(ex) &&
-            (!ex.equipment || (formData.equipamiento === 'completo' || ex.equipment === equipmentType || ex.equipment === "Sin equipo"))
+            (!ex.equipment || 
+             (formData.equipamiento === 'completo') || 
+             (Array.isArray(ex.equipment) && ex.equipment.includes(equipmentType)) || 
+             (typeof ex.equipment === 'string' && ex.equipment === equipmentType) || 
+             (Array.isArray(ex.equipment) && ex.equipment.includes("Sin equipo")) ||
+             (typeof ex.equipment === 'string' && ex.equipment === "Sin equipo"))
           );
           
           // Añadir ejercicios genéricos hasta tener al menos 4

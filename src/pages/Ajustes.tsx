@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
@@ -6,10 +7,13 @@ import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { BarChart, Activity, Dumbbell, Database, Save, RotateCcw, Shield, Download, Upload } from "lucide-react";
+import { BarChart, Activity, Dumbbell, Database, Save, RotateCcw, Shield, Download, Upload, TestTube, Settings, Mail } from "lucide-react";
 import { gymEquipment, exercises as equipmentDataExercises } from '../data/equipmentData';
 import { mysqlConnection, DbConfig, Equipment as MySQLEquipment, Exercise as MySQLExercise } from "../utils/mysqlConnection";
 import { Equipment as DataEquipment, Exercise as DataExercise } from "../data/equipmentData";
+import DatabaseConnectionLogs from "../components/DatabaseConnectionLogs";
+import EmailSettingsForm from "../components/EmailSettingsForm";
+import EnvEditor from "../components/EnvEditor";
 
 const muscleGroups = [
   "Pecho", "Espalda", "Hombros", "Tríceps", "Bíceps", "Abdominales",
@@ -58,7 +62,7 @@ const Ajustes = () => {
   // Conversion helper functions
   const convertToDataEquipment = (equipment: MySQLEquipment): DataEquipment => {
     return {
-      id: equipment.id || "",
+      id: equipment.id?.toString() || "",
       name: equipment.name,
       emoji: equipment.emoji,
       category: equipment.category,
@@ -71,7 +75,7 @@ const Ajustes = () => {
   
   const convertToDataExercise = (exercise: MySQLExercise): DataExercise => {
     return {
-      id: exercise.id || "",
+      id: exercise.id?.toString() || "",
       name: exercise.name,
       emoji: exercise.emoji,
       equipment: exercise.equipment as string[] | null,
@@ -80,7 +84,7 @@ const Ajustes = () => {
       description: exercise.description,
       requiresGym: exercise.requiresGym,
       caloriesPerRep: exercise.caloriesPerRep,
-      videoUrl: exercise.videoUrl
+      videoUrl: exercise.videoUrl,
     };
   };
   
@@ -126,11 +130,13 @@ const Ajustes = () => {
         const savedExercises = await mysqlConnection.getExercises();
         
         if (savedEquipment && savedEquipment.length > 0) {
-          setCustomEquipment(savedEquipment.map(convertToDataEquipment));
+          const convertedEquipment = savedEquipment.map(convertToDataEquipment);
+          setCustomEquipment(convertedEquipment);
         }
         
         if (savedExercises && savedExercises.length > 0) {
-          setCustomExercises(savedExercises.map(convertToDataExercise));
+          const convertedExercises = savedExercises.map(convertToDataExercise);
+          setCustomExercises(convertedExercises);
         }
       }
     };
@@ -180,11 +186,13 @@ const Ajustes = () => {
     }
 
     const newItem: DataEquipment = {
-      ...newEquipment,
       id: `eq-${Date.now()}`,
+      name: newEquipment.name,
+      description: newEquipment.description,
+      muscleGroups: newEquipment.muscleGroups,
       emoji: "🏋️",
       category: "Personalizado",
-      imagePath: "/placeholder.svg"
+      image: "/placeholder.svg"
     };
 
     const updatedList = [...customEquipment, newItem];
@@ -193,7 +201,8 @@ const Ajustes = () => {
     
     // Guardar en "base de datos"
     if (mysqlConnection.isConnected()) {
-      mysqlConnection.saveEquipment(updatedList.map(convertToMySQLEquipment));
+      const mySqlEquipment = updatedList.map(convertToMySQLEquipment);
+      mysqlConnection.saveEquipment(mySqlEquipment);
     }
     
     toast({
@@ -221,12 +230,15 @@ const Ajustes = () => {
     }
 
     const newItem: DataExercise = {
-      ...newExercise,
       id: `ex-${Date.now()}`,
+      name: newExercise.name,
+      description: newExercise.description,
+      muscleGroups: newExercise.muscleGroups,
       equipment: newExercise.equipment ? [newExercise.equipment] : null,
       difficulty: newExercise.difficulty.toLowerCase() as "principiante" | "intermedio" | "avanzado",
       requiresGym: newExercise.equipment !== "Sin equipo" && newExercise.equipment !== "",
-      imagePath: "/placeholder.svg"
+      emoji: newExercise.emoji,
+      image: "/placeholder.svg"
     };
 
     const updatedList = [...customExercises, newItem];
@@ -235,7 +247,8 @@ const Ajustes = () => {
     
     // Guardar en "base de datos"
     if (mysqlConnection.isConnected()) {
-      mysqlConnection.saveExercises(updatedList.map(convertToMySQLExercise));
+      const mySqlExercises = updatedList.map(convertToMySQLExercise);
+      mysqlConnection.saveExercises(mySqlExercises);
     }
     
     toast({
@@ -277,6 +290,24 @@ const Ajustes = () => {
       title: "Configuración guardada",
       description: "Configuración de MySQL guardada correctamente.",
     });
+  };
+  
+  // Test database connection
+  const testDbConnection = () => {
+    const result = mysqlConnection.testConnection();
+    
+    if (result.success) {
+      toast({
+        title: "Conexión exitosa",
+        description: result.message,
+      });
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Error de conexión",
+        description: result.message,
+      });
+    }
   };
   
   // Guardar todos los datos en la base de datos
@@ -340,13 +371,15 @@ const Ajustes = () => {
       // Cargar equipos
       const equipment = await mysqlConnection.getEquipment();
       if (equipment.length > 0) {
-        setCustomEquipment(equipment.map(convertToDataEquipment));
+        const convertedEquipment = equipment.map(convertToDataEquipment);
+        setCustomEquipment(convertedEquipment);
       }
       
       // Cargar ejercicios
       const exercises = await mysqlConnection.getExercises();
       if (exercises.length > 0) {
-        setCustomExercises(exercises.map(convertToDataExercise));
+        const convertedExercises = exercises.map(convertToDataExercise);
+        setCustomExercises(convertedExercises);
       }
       
       toast({
@@ -380,97 +413,116 @@ const Ajustes = () => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <Card className="col-span-1">
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Database className="h-5 w-5" />
-              Configuración MySQL
-            </CardTitle>
-            <CardDescription>
-              Configura la conexión a la base de datos MySQL
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="host">Servidor</Label>
-              <Input 
-                id="host" 
-                value={dbConfig.host} 
-                onChange={(e) => setDbConfig({...dbConfig, host: e.target.value})}
-                placeholder="localhost" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="port">Puerto</Label>
-              <Input 
-                id="port" 
-                type="number" 
-                value={dbConfig.port} 
-                onChange={(e) => setDbConfig({...dbConfig, port: parseInt(e.target.value)})}
-                placeholder="3306" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="user">Usuario</Label>
-              <Input 
-                id="user" 
-                value={dbConfig.user} 
-                onChange={(e) => setDbConfig({...dbConfig, user: e.target.value})}
-                placeholder="root" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">Contraseña</Label>
-              <Input 
-                id="password" 
-                type="password" 
-                value={dbConfig.password} 
-                onChange={(e) => setDbConfig({...dbConfig, password: e.target.value})}
-                placeholder="Contraseña" 
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="database">Base de datos</Label>
-              <Input 
-                id="database" 
-                value={dbConfig.database} 
-                onChange={(e) => setDbConfig({...dbConfig, database: e.target.value})}
-                placeholder="gymflow" 
-              />
-            </div>
-          </CardContent>
-          <CardFooter className="flex justify-between">
-            <Button variant="outline" onClick={() => setDbConfig({
-              host: "localhost",
-              port: 3306,
-              user: "root",
-              password: "",
-              database: "gymflow"
-            })}>
-              <RotateCcw className="mr-2 h-4 w-4" />
-              Restablecer
-            </Button>
-            <Button onClick={saveDbConfig}>
-              <Shield className="mr-2 h-4 w-4" />
-              Guardar
-            </Button>
-          </CardFooter>
-        </Card>
+      <Tabs defaultValue="database">
+        <TabsList className="grid grid-cols-4 w-full max-w-3xl mx-auto mb-6 bg-secondary dark:bg-gray-800 dark:text-gray-200">
+          <TabsTrigger value="database" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
+            <Database className="h-4 w-4" />
+            MySQL
+          </TabsTrigger>
+          <TabsTrigger value="equipment" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
+            <Dumbbell className="h-4 w-4" />
+            Máquinas
+          </TabsTrigger>
+          <TabsTrigger value="exercises" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
+            <Activity className="h-4 w-4" />
+            Ejercicios
+          </TabsTrigger>
+          <TabsTrigger value="email" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
+            <Mail className="h-4 w-4" />
+            Email
+          </TabsTrigger>
+        </TabsList>
 
-        <Tabs defaultValue="equipment" className="col-span-1 lg:col-span-3">
-          <TabsList className="grid grid-cols-2 w-full max-w-md mx-auto mb-6 bg-secondary dark:bg-gray-800 dark:text-gray-200">
-            <TabsTrigger value="equipment" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
-              <Dumbbell className="h-4 w-4" />
-              Añadir Máquinas
-            </TabsTrigger>
-            <TabsTrigger value="exercises" className="flex items-center gap-2 data-[state=active]:bg-background dark:data-[state=active]:bg-gray-700">
-              <Activity className="h-4 w-4" />
-              Añadir Ejercicios
-            </TabsTrigger>
-          </TabsList>
-          
-          <div className="flex justify-center space-x-4 mb-6">
+        <TabsContent value="database" className="space-y-6">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="shadow-md">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Database className="h-5 w-5" />
+                  Configuración MySQL
+                </CardTitle>
+                <CardDescription>
+                  Configura la conexión a la base de datos MySQL
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="host">Servidor</Label>
+                  <Input 
+                    id="host" 
+                    value={dbConfig.host} 
+                    onChange={(e) => setDbConfig({...dbConfig, host: e.target.value})}
+                    placeholder="localhost" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="port">Puerto</Label>
+                  <Input 
+                    id="port" 
+                    type="number" 
+                    value={dbConfig.port} 
+                    onChange={(e) => setDbConfig({...dbConfig, port: parseInt(e.target.value)})}
+                    placeholder="3306" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="user">Usuario</Label>
+                  <Input 
+                    id="user" 
+                    value={dbConfig.user} 
+                    onChange={(e) => setDbConfig({...dbConfig, user: e.target.value})}
+                    placeholder="root" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="password">Contraseña</Label>
+                  <Input 
+                    id="password" 
+                    type="password" 
+                    value={dbConfig.password} 
+                    onChange={(e) => setDbConfig({...dbConfig, password: e.target.value})}
+                    placeholder="Contraseña" 
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="database">Base de datos</Label>
+                  <Input 
+                    id="database" 
+                    value={dbConfig.database} 
+                    onChange={(e) => setDbConfig({...dbConfig, database: e.target.value})}
+                    placeholder="gymflow" 
+                  />
+                </div>
+              </CardContent>
+              <CardFooter className="flex flex-wrap gap-2">
+                <Button variant="outline" onClick={() => setDbConfig({
+                  host: "localhost",
+                  port: 3306,
+                  user: "root",
+                  password: "",
+                  database: "gymflow"
+                })}>
+                  <RotateCcw className="mr-2 h-4 w-4" />
+                  Restablecer
+                </Button>
+                <Button onClick={testDbConnection} variant="outline">
+                  <TestTube className="mr-2 h-4 w-4" />
+                  Probar Conexión
+                </Button>
+                <Button onClick={saveDbConfig}>
+                  <Shield className="mr-2 h-4 w-4" />
+                  Guardar
+                </Button>
+              </CardFooter>
+            </Card>
+
+            <div className="space-y-6">
+              <EnvEditor />
+              <DatabaseConnectionLogs />
+            </div>
+          </div>
+
+          <div className="flex justify-center space-x-4 mb-6 mt-8">
             <Button
               onClick={saveAllData}
               variant="default"
@@ -489,224 +541,228 @@ const Ajustes = () => {
               Cargar desde MySQL
             </Button>
           </div>
+        </TabsContent>
 
-          <TabsContent value="equipment">
-            <Card>
-              <CardHeader>
-                <CardTitle>Añadir nueva máquina o equipo</CardTitle>
-                <CardDescription>
-                  Personaliza tu inventario de equipos de gimnasio
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="space-y-2">
-                  <Label htmlFor="equipment-name">Nombre del equipo</Label>
-                  <Input
-                    id="equipment-name"
-                    value={newEquipment.name}
-                    onChange={(e) => handleEquipmentChange('name', e.target.value)}
-                    placeholder="Ej: Máquina Smith"
-                  />
-                </div>
+        <TabsContent value="equipment">
+          <Card>
+            <CardHeader>
+              <CardTitle>Añadir nueva máquina o equipo</CardTitle>
+              <CardDescription>
+                Personaliza tu inventario de equipos de gimnasio
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <Label htmlFor="equipment-name">Nombre del equipo</Label>
+                <Input
+                  id="equipment-name"
+                  value={newEquipment.name}
+                  onChange={(e) => handleEquipmentChange('name', e.target.value)}
+                  placeholder="Ej: Máquina Smith"
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label htmlFor="equipment-description">Descripción</Label>
-                  <Input
-                    id="equipment-description"
-                    value={newEquipment.description}
-                    onChange={(e) => handleEquipmentChange('description', e.target.value)}
-                    placeholder="Describe brevemente el equipo"
-                  />
-                </div>
+              <div className="space-y-2">
+                <Label htmlFor="equipment-description">Descripción</Label>
+                <Input
+                  id="equipment-description"
+                  value={newEquipment.description}
+                  onChange={(e) => handleEquipmentChange('description', e.target.value)}
+                  placeholder="Describe brevemente el equipo"
+                />
+              </div>
 
-                <div className="space-y-2">
-                  <Label>Grupos musculares principales</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {muscleGroups.map(group => (
-                      <div
-                        key={group}
-                        className={`
-                          px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors
-                          ${newEquipment.muscleGroups.includes(group)
-                            ? 'bg-purple-100 border-purple-500 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500 dark:text-purple-300'
-                            : 'border-gray-200 hover:border-purple-300 dark:border-gray-700 dark:hover:border-purple-600'
-                          }
-                        `}
-                        onClick={() => handleEquipmentMuscleGroupToggle(group)}
-                      >
-                        {group}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button onClick={handleAddEquipment} className="w-full gradient-btn">
-                  <Dumbbell className="mr-2 h-4 w-4" />
-                  Añadir Equipo
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-
-          <TabsContent value="exercises">
-            <Card>
-              <CardHeader>
-                <CardTitle>Añadir nuevo ejercicio</CardTitle>
-                <CardDescription>
-                  Crea ejercicios personalizados para tus rutinas
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-name">Nombre del ejercicio</Label>
-                    <Input
-                      id="exercise-name"
-                      value={newExercise.name}
-                      onChange={(e) => handleExerciseChange('name', e.target.value)}
-                      placeholder="Ej: Press de banca inclinado"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-equipment">Equipo necesario</Label>
-                    <Select
-                      value={newExercise.equipment}
-                      onValueChange={(value) => handleExerciseChange('equipment', value)}
+              <div className="space-y-2">
+                <Label>Grupos musculares principales</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {muscleGroups.map(group => (
+                    <div
+                      key={group}
+                      className={`
+                        px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors
+                        ${newEquipment.muscleGroups.includes(group)
+                          ? 'bg-purple-100 border-purple-500 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500 dark:text-purple-300'
+                          : 'border-gray-200 hover:border-purple-300 dark:border-gray-700 dark:hover:border-purple-600'
+                        }
+                      `}
+                      onClick={() => handleEquipmentMuscleGroupToggle(group)}
                     >
-                      <SelectTrigger id="exercise-equipment">
-                        <SelectValue placeholder="Seleccionar equipo" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {equipment.map(item => (
-                          <SelectItem key={item} value={item}>
-                            {item}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      {group}
+                    </div>
+                  ))}
                 </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleAddEquipment} className="w-full gradient-btn">
+                <Dumbbell className="mr-2 h-4 w-4" />
+                Añadir Equipo
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
 
+        <TabsContent value="exercises">
+          <Card>
+            <CardHeader>
+              <CardTitle>Añadir nuevo ejercicio</CardTitle>
+              <CardDescription>
+                Crea ejercicios personalizados para tus rutinas
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="exercise-description">Descripción</Label>
+                  <Label htmlFor="exercise-name">Nombre del ejercicio</Label>
                   <Input
-                    id="exercise-description"
-                    value={newExercise.description}
-                    onChange={(e) => handleExerciseChange('description', e.target.value)}
-                    placeholder="Describe brevemente el ejercicio"
+                    id="exercise-name"
+                    value={newExercise.name}
+                    onChange={(e) => handleExerciseChange('name', e.target.value)}
+                    placeholder="Ej: Press de banca inclinado"
                   />
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-difficulty">Dificultad</Label>
-                    <Select
-                      value={newExercise.difficulty}
-                      onValueChange={(value) => handleExerciseChange('difficulty', value)}
-                    >
-                      <SelectTrigger id="exercise-difficulty">
-                        <SelectValue placeholder="Seleccionar dificultad" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {difficultyLevels.map(level => (
-                          <SelectItem key={level} value={level}>
-                            {level}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-emoji">Emoji representativo</Label>
-                    <Input
-                      id="exercise-emoji"
-                      value={newExercise.emoji}
-                      onChange={(e) => handleExerciseChange('emoji', e.target.value)}
-                      placeholder="💪"
-                    />
-                  </div>
+                <div className="space-y-2">
+                  <Label htmlFor="exercise-equipment">Equipo necesario</Label>
+                  <Select
+                    value={newExercise.equipment}
+                    onValueChange={(value) => handleExerciseChange('equipment', value)}
+                  >
+                    <SelectTrigger id="exercise-equipment">
+                      <SelectValue placeholder="Seleccionar equipo" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {equipment.map(item => (
+                        <SelectItem key={item} value={item}>
+                          {item}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
+              </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-sets">Series</Label>
-                    <Input
-                      id="exercise-sets"
-                      type="number"
-                      min="1"
-                      max="10"
-                      value={newExercise.sets}
-                      onChange={(e) => handleExerciseChange('sets', parseInt(e.target.value))}
-                    />
-                  </div>
+              <div className="space-y-2">
+                <Label htmlFor="exercise-description">Descripción</Label>
+                <Input
+                  id="exercise-description"
+                  value={newExercise.description}
+                  onChange={(e) => handleExerciseChange('description', e.target.value)}
+                  placeholder="Describe brevemente el ejercicio"
+                />
+              </div>
 
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-reps">Repeticiones</Label>
-                    <Input
-                      id="exercise-reps"
-                      value={newExercise.reps}
-                      onChange={(e) => handleExerciseChange('reps', e.target.value)}
-                      placeholder="Ej: 8-12"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="exercise-rest">Descanso</Label>
-                    <Input
-                      id="exercise-rest"
-                      value={newExercise.rest}
-                      onChange={(e) => handleExerciseChange('rest', e.target.value)}
-                      placeholder="Ej: 60 seg"
-                    />
-                  </div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="exercise-difficulty">Dificultad</Label>
+                  <Select
+                    value={newExercise.difficulty}
+                    onValueChange={(value) => handleExerciseChange('difficulty', value)}
+                  >
+                    <SelectTrigger id="exercise-difficulty">
+                      <SelectValue placeholder="Seleccionar dificultad" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {difficultyLevels.map(level => (
+                        <SelectItem key={level} value={level}>
+                          {level}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label htmlFor="exercise-calories">Calorías por repetición</Label>
+                  <Label htmlFor="exercise-emoji">Emoji representativo</Label>
                   <Input
-                    id="exercise-calories"
+                    id="exercise-emoji"
+                    value={newExercise.emoji}
+                    onChange={(e) => handleExerciseChange('emoji', e.target.value)}
+                    placeholder="💪"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="exercise-sets">Series</Label>
+                  <Input
+                    id="exercise-sets"
                     type="number"
                     min="1"
-                    max="20"
-                    value={newExercise.calories}
-                    onChange={(e) => handleExerciseChange('calories', parseInt(e.target.value))}
+                    max="10"
+                    value={newExercise.sets}
+                    onChange={(e) => handleExerciseChange('sets', parseInt(e.target.value))}
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <Label>Grupos musculares principales</Label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {muscleGroups.map(group => (
-                      <div
-                        key={group}
-                        className={`
-                          px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors
-                          ${newExercise.muscleGroups.includes(group)
-                            ? 'bg-purple-100 border-purple-500 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500 dark:text-purple-300'
-                            : 'border-gray-200 hover:border-purple-300 dark:border-gray-700 dark:hover:border-purple-600'
-                          }
-                        `}
-                        onClick={() => handleExerciseMuscleGroupToggle(group)}
-                      >
-                        {group}
-                      </div>
-                    ))}
-                  </div>
+                  <Label htmlFor="exercise-reps">Repeticiones</Label>
+                  <Input
+                    id="exercise-reps"
+                    value={newExercise.reps}
+                    onChange={(e) => handleExerciseChange('reps', e.target.value)}
+                    placeholder="Ej: 8-12"
+                  />
                 </div>
-              </CardContent>
-              <CardFooter>
-                <Button onClick={handleAddExercise} className="w-full gradient-btn">
-                  <Activity className="mr-2 h-4 w-4" />
-                  Añadir Ejercicio
-                </Button>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-        </Tabs>
-      </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="exercise-rest">Descanso</Label>
+                  <Input
+                    id="exercise-rest"
+                    value={newExercise.rest}
+                    onChange={(e) => handleExerciseChange('rest', e.target.value)}
+                    placeholder="Ej: 60 seg"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <Label htmlFor="exercise-calories">Calorías por repetición</Label>
+                <Input
+                  id="exercise-calories"
+                  type="number"
+                  min="1"
+                  max="20"
+                  value={newExercise.calories}
+                  onChange={(e) => handleExerciseChange('calories', parseInt(e.target.value))}
+                />
+              </div>
+
+              <div className="space-y-2">
+                <Label>Grupos musculares principales</Label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {muscleGroups.map(group => (
+                    <div
+                      key={group}
+                      className={`
+                        px-3 py-2 rounded-md border text-sm cursor-pointer transition-colors
+                        ${newExercise.muscleGroups.includes(group)
+                          ? 'bg-purple-100 border-purple-500 text-purple-700 dark:bg-purple-900/30 dark:border-purple-500 dark:text-purple-300'
+                          : 'border-gray-200 hover:border-purple-300 dark:border-gray-700 dark:hover:border-purple-600'
+                        }
+                      `}
+                      onClick={() => handleExerciseMuscleGroupToggle(group)}
+                    >
+                      {group}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleAddExercise} className="w-full gradient-btn">
+                <Activity className="mr-2 h-4 w-4" />
+                Añadir Ejercicio
+              </Button>
+            </CardFooter>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="email">
+          <EmailSettingsForm />
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };
