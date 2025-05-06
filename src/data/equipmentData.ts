@@ -6,6 +6,7 @@ export interface Equipment {
   category: string;
   description: string;
   muscleGroups: string[];
+  caloriesPerHour?: number; // Adding the missing property
   image?: string;
 }
 
@@ -16,7 +17,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🏋️",
     category: "Máquina con Peso",
     description: "Máquina para ejercicios de pecho con barra horizontal",
-    muscleGroups: ["Pecho", "Tríceps", "Hombros"]
+    muscleGroups: ["Pecho", "Tríceps", "Hombros"],
+    caloriesPerHour: 350
   },
   {
     id: "smith-machine",
@@ -24,7 +26,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🔨",
     category: "Multiestación",
     description: "Máquina multiusos con barra guiada para diversos ejercicios",
-    muscleGroups: ["Múltiples", "Pecho", "Piernas", "Hombros"]
+    muscleGroups: ["Múltiples", "Pecho", "Piernas", "Hombros"],
+    caloriesPerHour: 400
   },
   {
     id: "prensa-piernas",
@@ -32,7 +35,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🦵",
     category: "Máquina con Peso",
     description: "Máquina para trabajar cuádriceps y glúteos con resistencia",
-    muscleGroups: ["Cuádriceps", "Glúteos", "Isquiotibiales"]
+    muscleGroups: ["Cuádriceps", "Glúteos", "Isquiotibiales"],
+    caloriesPerHour: 450
   },
   {
     id: "polea-alta",
@@ -40,7 +44,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "⛓️",
     category: "Polea",
     description: "Sistema de poleas para ejercicios de tracción hacia abajo",
-    muscleGroups: ["Espalda", "Bíceps", "Hombros"]
+    muscleGroups: ["Espalda", "Bíceps", "Hombros"],
+    caloriesPerHour: 300
   },
   {
     id: "polea-baja",
@@ -48,7 +53,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "⛓️",
     category: "Polea",
     description: "Sistema de poleas para ejercicios de tracción hacia arriba",
-    muscleGroups: ["Espalda", "Bíceps", "Antebrazo"]
+    muscleGroups: ["Espalda", "Bíceps", "Antebrazo"],
+    caloriesPerHour: 300
   },
   {
     id: "extension-pierna",
@@ -56,7 +62,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🦿",
     category: "Máquina de Aislamiento",
     description: "Máquina para aislar y trabajar los cuádriceps",
-    muscleGroups: ["Cuádriceps"]
+    muscleGroups: ["Cuádriceps"],
+    caloriesPerHour: 280
   },
   {
     id: "curl-femoral",
@@ -64,7 +71,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🦵",
     category: "Máquina de Aislamiento",
     description: "Máquina para aislar y trabajar los isquiotibiales",
-    muscleGroups: ["Isquiotibiales"]
+    muscleGroups: ["Isquiotibiales"],
+    caloriesPerHour: 250
   },
   {
     id: "aductor",
@@ -72,7 +80,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🔄",
     category: "Máquina de Aislamiento",
     description: "Máquina para trabajar la cara interna del muslo",
-    muscleGroups: ["Aductores"]
+    muscleGroups: ["Aductores"],
+    caloriesPerHour: 220
   },
   {
     id: "abductor",
@@ -80,7 +89,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🔄",
     category: "Máquina de Aislamiento",
     description: "Máquina para trabajar la cara externa del muslo",
-    muscleGroups: ["Abductores"]
+    muscleGroups: ["Abductores"],
+    caloriesPerHour: 220
   },
   {
     id: "press-hombro",
@@ -88,7 +98,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "💪",
     category: "Máquina con Peso",
     description: "Máquina para ejercicios de hombros con resistencia",
-    muscleGroups: ["Hombros", "Tríceps"]
+    muscleGroups: ["Hombros", "Tríceps"],
+    caloriesPerHour: 300
   },
   {
     id: "press-pecho",
@@ -96,7 +107,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "💪",
     category: "Máquina con Peso",
     description: "Máquina para ejercicios de pecho con resistencia",
-    muscleGroups: ["Pecho", "Tríceps", "Hombros"]
+    muscleGroups: ["Pecho", "Tríceps", "Hombros"],
+    caloriesPerHour: 350
   },
   {
     id: "remo-sentado",
@@ -104,7 +116,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🚣",
     category: "Máquina con Peso",
     description: "Máquina para ejercicios de espalda en posición sentada",
-    muscleGroups: ["Espalda", "Bíceps", "Antebrazos"]
+    muscleGroups: ["Espalda", "Bíceps", "Antebrazos"],
+    caloriesPerHour: 320
   },
   {
     id: "maquina-dominadas",
@@ -112,7 +125,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🧗",
     category: "Asistida",
     description: "Máquina para hacer dominadas con asistencia de contrapeso",
-    muscleGroups: ["Espalda", "Bíceps", "Antebrazo"]
+    muscleGroups: ["Espalda", "Bíceps", "Antebrazo"],
+    caloriesPerHour: 280
   },
   {
     id: "barra-dominadas",
@@ -120,7 +134,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🏋️",
     category: "Peso Libre",
     description: "Barra fija para realizar dominadas y ejercicios de suspensión",
-    muscleGroups: ["Espalda", "Bíceps", "Core"]
+    muscleGroups: ["Espalda", "Bíceps", "Core"],
+    caloriesPerHour: 400
   },
   {
     id: "barra-paralelas",
@@ -128,7 +143,8 @@ export const gymEquipment: Equipment[] = [
     emoji: "🤸",
     category: "Peso Libre",
     description: "Barras para realizar fondos y ejercicios de tríceps",
-    muscleGroups: ["Tríceps", "Pecho", "Hombros"]
+    muscleGroups: ["Tríceps", "Pecho", "Hombros"],
+    caloriesPerHour: 380
   }
 ];
 
@@ -141,6 +157,7 @@ export interface Exercise {
   difficulty: "principiante" | "intermedio" | "avanzado";
   description: string;
   requiresGym: boolean;
+  caloriesPerRep?: number; // Adding the missing property
   videoUrl?: string;
 }
 
@@ -154,7 +171,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Pecho", "Tríceps", "Hombros"],
     difficulty: "principiante",
     description: "Ejercicio básico para pecho y brazos usando el peso corporal",
-    requiresGym: false
+    requiresGym: false,
+    caloriesPerRep: 5
   },
   {
     id: "sentadillas",
@@ -164,7 +182,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Cuádriceps", "Glúteos", "Isquiotibiales"],
     difficulty: "principiante",
     description: "Ejercicio básico para piernas usando el peso corporal",
-    requiresGym: false
+    requiresGym: false,
+    caloriesPerRep: 8
   },
   {
     id: "plancha",
@@ -174,7 +193,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Core", "Abdominales", "Espalda baja"],
     difficulty: "principiante",
     description: "Ejercicio estático para fortalecer el core",
-    requiresGym: false
+    requiresGym: false,
+    caloriesPerRep: 6
   },
   {
     id: "burpees",
@@ -184,7 +204,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Full body", "Cardio"],
     difficulty: "intermedio",
     description: "Ejercicio de alta intensidad que combina sentadilla, flexión y salto",
-    requiresGym: false
+    requiresGym: false,
+    caloriesPerRep: 10
   },
   {
     id: "mountain-climbers",
@@ -194,7 +215,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Core", "Hombros", "Cardio"],
     difficulty: "principiante",
     description: "Ejercicio dinámico para core y cardio",
-    requiresGym: false
+    requiresGym: false,
+    caloriesPerRep: 7
   },
   
   // Ejercicios con máquinas
@@ -206,7 +228,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Pecho", "Tríceps", "Hombros"],
     difficulty: "principiante",
     description: "Acostado en el banco, empujar la barra hacia arriba",
-    requiresGym: true
+    requiresGym: true,
+    caloriesPerRep: 8
   },
   {
     id: "prensa-piernas-exercise",
@@ -216,7 +239,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Cuádriceps", "Glúteos", "Isquiotibiales"],
     difficulty: "principiante",
     description: "Sentado en la máquina, empujar la plataforma con las piernas",
-    requiresGym: true
+    requiresGym: true,
+    caloriesPerRep: 12
   },
   {
     id: "polea-alta-exercise",
@@ -226,7 +250,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Espalda", "Bíceps"],
     difficulty: "principiante",
     description: "Sentado, tirar de la barra hacia el pecho",
-    requiresGym: true
+    requiresGym: true,
+    caloriesPerRep: 7
   },
   {
     id: "extension-pierna-exercise",
@@ -236,7 +261,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Cuádriceps"],
     difficulty: "principiante",
     description: "Sentado en la máquina, extender las piernas",
-    requiresGym: true
+    requiresGym: true,
+    caloriesPerRep: 6
   },
   
   // Ejercicios con peso libre
@@ -248,7 +274,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Bíceps", "Antebrazos"],
     difficulty: "principiante",
     description: "De pie, flexionar los codos llevando las mancuernas hacia los hombros",
-    requiresGym: false
+    requiresGym: false,
+    caloriesPerRep: 4
   },
   {
     id: "dominadas",
@@ -258,7 +285,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Espalda", "Bíceps", "Antebrazos"],
     difficulty: "intermedio",
     description: "Colgado de la barra, levantar el cuerpo hasta que el mentón supere la barra",
-    requiresGym: true
+    requiresGym: true,
+    caloriesPerRep: 9
   },
   {
     id: "fondos",
@@ -268,7 +296,8 @@ export const exercises: Exercise[] = [
     muscleGroups: ["Tríceps", "Pecho", "Hombros"],
     difficulty: "intermedio",
     description: "Sostenido en las barras paralelas, bajar y subir el cuerpo",
-    requiresGym: true
+    requiresGym: true,
+    caloriesPerRep: 8
   }
 ];
 

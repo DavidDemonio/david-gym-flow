@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell, Info, Plus } from 'lucide-react';
+import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell, Plus } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { Button } from "@/components/ui/button";
+import ExerciseAnalytics from '../components/ExerciseAnalytics';
 
 // Mock data para ejercicios
 const mockExercises = {
