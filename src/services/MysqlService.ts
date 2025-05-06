@@ -104,6 +104,31 @@ class MysqlService {
       throw error;
     }
   }
+
+  /**
+   * Generate PDF routine from routine data
+   */
+  async generateRoutinePDF(routineData: any): Promise<Blob> {
+    try {
+      const response = await fetch('/api/pdf/generate-routine', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(routineData),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      // Return the PDF blob
+      return await response.blob();
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      throw error;
+    }
+  }
 }
 
 export default new MysqlService();

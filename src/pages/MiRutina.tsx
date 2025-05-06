@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import ExerciseAnalytics from '../components/ExerciseAnalytics';
 import WorkoutTimer, { WorkoutStats } from '../components/WorkoutTimer';
 import { mysqlConnection, Routine, Exercise } from '../utils/mysqlConnection';
+import PdfService from '../services/PdfService';
 
 // Mock data para ejercicios
 const mockExercises = {
@@ -196,14 +197,41 @@ const MiRutina = () => {
   const rutina = mockExercises[formData.objetivo]?.[formData.nivel]?.[formData.equipamiento] || [];
   
   // Manejar la descarga de la rutina
-  const handleDownload = () => {
+  const handleDownload = async () => {
     toast({
-      title: "Descarga iniciada",
-      description: "Tu rutina se está descargando como PDF",
+      title: "Generando PDF...",
+      description: "Tu rutina se está convirtiendo a PDF",
     });
     
-    // Aquí iría la lógica real de generación del PDF
-    console.log('Descargando rutina:', weeklyRoutine || formData);
+    try {
+      // Determinar qué datos de rutina usar
+      const routineData = weeklyRoutine || {
+        name: "Mi Rutina Personalizada",
+        days: formData.dias,
+        dayNames: rutina.map(day => day.day),
+        focusAreas: Object.fromEntries(
+          rutina.map((day, index) => [(index + 1).toString(), day.focus])
+        ),
+        exercises: Object.fromEntries(
+          rutina.map((day, index) => [day.day, day.exercises])
+        )
+      };
+      
+      // Generate and download PDF using our service
+      await PdfService.generateRoutinePDF(routineData);
+      
+      toast({
+        title: "¡PDF generado!",
+        description: "Tu rutina ha sido descargada como PDF",
+      });
+    } catch (err) {
+      console.error('Error al generar el PDF:', err);
+      toast({
+        variant: "destructive",
+        title: "Error al generar PDF",
+        description: "Ocurrió un problema al crear el archivo PDF",
+      });
+    }
   };
   
   // Navegar a la página de máquinas y ejercicios

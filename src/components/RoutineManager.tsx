@@ -17,7 +17,7 @@ import {
 } from "@/components/ui/select";
 import { useToast } from "../hooks/use-toast";
 import { mysqlConnection, Routine } from "../utils/mysqlConnection";
-import { Calendar, Trash, Edit, Plus, Loader2, Check, Clock, CalendarCheck } from "lucide-react";
+import { Calendar, Trash, Edit, Plus, Loader2, Check, Clock, CalendarCheck, Download } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 // Routine status types
@@ -36,6 +36,9 @@ export function RoutineManager() {
   const [routineToDelete, setRoutineToDelete] = useState<number | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [routineToEdit, setRoutineToEdit] = useState<RoutineWithStatus | null>(null);
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [routineToRename, setRoutineToRename] = useState<RoutineWithStatus | null>(null);
+  const [newRoutineName, setNewRoutineName] = useState('');
   
   useEffect(() => {
     loadRoutines();
@@ -130,6 +133,12 @@ export function RoutineManager() {
     setEditDialogOpen(true);
   };
   
+  const openRenameDialog = (routine: RoutineWithStatus) => {
+    setRoutineToRename({...routine});
+    setNewRoutineName(routine.name);
+    setRenameDialogOpen(true);
+  };
+  
   const handleEditSave = async () => {
     if (!routineToEdit) return;
     
@@ -172,6 +181,52 @@ export function RoutineManager() {
     } finally {
       setEditDialogOpen(false);
       setRoutineToEdit(null);
+    }
+  };
+
+  const handleRenameSave = async () => {
+    if (!routineToRename || !newRoutineName.trim()) return;
+
+    try {
+      // Update the routine with new name
+      const updatedRoutine = { ...routineToRename, name: newRoutineName.trim() };
+      
+      // Update the routine in the list
+      const updatedRoutines = routines.map(r => 
+        r.id === routineToRename.id ? updatedRoutine : r
+      );
+      
+      await mysqlConnection.saveRoutines(updatedRoutines);
+      setRoutines(updatedRoutines);
+      
+      toast({
+        title: "Rutina renombrada",
+        description: `La rutina ha sido renombrada a "${newRoutineName}"`
+      });
+      
+      // Send email notification
+      if (mysqlConnection.getUserProfile()?.email) {
+        const emailResult = await mysqlConnection.sendEmail(
+          mysqlConnection.getUserProfile()!.email!,
+          "Rutina renombrada",
+          `Has renombrado una rutina de entrenamiento.\n\nNuevo nombre: "${newRoutineName}"\n\nFecha: ${new Date().toLocaleDateString()}\n\nSigue entrenando con GymFlow!`
+        );
+        
+        if (!emailResult.success) {
+          console.error("Error sending email notification:", emailResult);
+        }
+      }
+    } catch (err) {
+      console.error("Error renaming routine:", err);
+      toast({
+        variant: "destructive",
+        title: "Error al renombrar",
+        description: "No se pudo renombrar la rutina seleccionada"
+      });
+    } finally {
+      setRenameDialogOpen(false);
+      setRoutineToRename(null);
+      setNewRoutineName('');
     }
   };
   
@@ -327,12 +382,33 @@ export function RoutineManager() {
                     </Select>
                   </div>
                   
-                  <Button variant="ghost" size="icon" onClick={() => confirmDelete(routine.id as number)}>
-                    <Trash className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={() => openEditDialog(routine)}>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    title="Renombrar rutina"
+                    onClick={() => openRenameDialog(routine)}
+                  >
                     <Edit className="h-4 w-4" />
                   </Button>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    title="Eliminar rutina"
+                    onClick={() => confirmDelete(routine.id as number)}
+                  >
+                    <Trash className="h-4 w-4" />
+                  </Button>
+                  
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    title="Actualizar estado"
+                    onClick={() => openEditDialog(routine)}
+                  >
+                    <CalendarCheck className="h-4 w-4" />
+                  </Button>
+                  
                   <Button size="sm" className="gradient-btn" onClick={() => viewRoutine(routine.id as number)}>
                     Ver Rutina
                   </Button>
@@ -386,6 +462,50 @@ export function RoutineManager() {
               className="w-full sm:w-auto"
             >
               Eliminar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Rename routine dialog */}
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Renombrar Rutina</DialogTitle>
+            <DialogDescription>
+              Introduce un nuevo nombre para tu rutina
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="name" className="text-right">
+                Nombre
+              </Label>
+              <Input
+                id="name"
+                value={newRoutineName}
+                onChange={(e) => setNewRoutineName(e.target.value)}
+                className="col-span-3"
+                autoFocus
+              />
+            </div>
+          </div>
+          
+          <DialogFooter className="flex sm:justify-between gap-4">
+            <Button 
+              variant="outline" 
+              onClick={() => setRenameDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleRenameSave}
+              disabled={!newRoutineName.trim()}
+              className="w-full sm:w-auto gradient-btn"
+            >
+              Guardar
             </Button>
           </DialogFooter>
         </DialogContent>
