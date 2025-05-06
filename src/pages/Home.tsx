@@ -1,132 +1,147 @@
 
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight, Dumbbell, Trophy, Clock, BarChart, CheckCircle, Flame } from 'lucide-react';
-import { Card, CardContent } from '@/components/ui/card';
+import { Dumbbell, BarChart3, Calendar, ChevronRight, Users, Settings } from 'lucide-react';
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useToast } from '../hooks/use-toast';
+import { mysqlConnection } from "../utils/mysqlConnection";
+import ExerciseEquipmentManager from '../components/ExerciseEquipmentManager';
+import RoutineManager from '../components/RoutineManager';
 
 const Home = () => {
   const navigate = useNavigate();
+  const { toast } = useToast();
+  const [activeTab, setActiveTab] = useState<string>("routines");
+  const [isConnected, setIsConnected] = useState(false);
+  const [userProfile, setUserProfile] = useState<any>(null);
   
-  const features = [
-    {
-      icon: <Dumbbell className="h-8 w-8 text-purple-500 dark:text-purple-400" />,
-      title: 'Rutinas Personalizadas',
-      description: 'Crea rutinas adaptadas a tus objetivos, nivel y equipo disponible.'
-    },
-    {
-      icon: <Clock className="h-8 w-8 text-purple-500 dark:text-purple-400" />,
-      title: 'Eficiencia de Tiempo',
-      description: 'Optimiza tu entrenamiento con series y repeticiones precisas.'
-    },
-    {
-      icon: <BarChart className="h-8 w-8 text-purple-500 dark:text-purple-400" />,
-      title: 'Seguimiento de Progreso',
-      description: 'Controla tus avances y evolución con métricas claras.'
-    },
-    {
-      icon: <Trophy className="h-8 w-8 text-purple-500 dark:text-purple-400" />,
-      title: 'Alcanza tus Metas',
-      description: 'Consigue resultados reales con planes estructurados.'
+  // Check database connection and user profile on mount
+  useEffect(() => {
+    checkConnection();
+    loadUserProfile();
+  }, []);
+  
+  const checkConnection = () => {
+    const connected = mysqlConnection.isConnected();
+    setIsConnected(connected);
+    
+    if (!connected) {
+      // Show toast only if not connected, to avoid too many notifications
+      toast({
+        variant: "default",
+        title: "Base de datos no conectada",
+        description: "Configura la conexión a MySQL en Ajustes para acceder a todas las funciones",
+      });
     }
-  ];
-
-  const benefits = [
-    { text: 'Entrena desde cualquier lugar', icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
-    { text: 'Aumenta tu fuerza y resistencia', icon: <Flame className="h-5 w-5 text-orange-500" /> },
-    { text: 'Reduce el riesgo de lesiones', icon: <CheckCircle className="h-5 w-5 text-green-500" /> },
-    { text: 'Mejora tu composición corporal', icon: <Flame className="h-5 w-5 text-orange-500" /> },
-  ];
-
+  };
+  
+  const loadUserProfile = () => {
+    const profile = mysqlConnection.getUserProfile();
+    setUserProfile(profile);
+  };
+  
   return (
-    <div className="container mx-auto px-4 py-12">
-      {/* Hero Section con animación y efecto 3D */}
-      <div className="glass-card rounded-2xl p-8 mb-10 animate-fadeInUp overflow-hidden relative hero-gradient card-3d">
-        <div className="absolute -top-24 -right-24 w-64 h-64 bg-purple-500/10 dark:bg-purple-600/10 rounded-full blur-3xl"></div>
-        <div className="absolute -bottom-32 -left-20 w-80 h-80 bg-indigo-500/10 dark:bg-indigo-600/10 rounded-full blur-3xl"></div>
+    <div className="container mx-auto px-4 py-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="mb-10">
+          <h1 className="text-4xl font-bold gradient-text mb-4 animate-fadeInUp">David GymFlow</h1>
+          <p className="text-xl text-gray-600 dark:text-gray-300 animate-fadeInUp animate-delay-100">
+            Tu asistente personal para entrenamientos y rutinas
+          </p>
+          
+          {!isConnected && (
+            <Card className="mt-6 border-amber-200 bg-amber-50 dark:bg-amber-900/20 dark:border-amber-800 animate-fadeInUp animate-delay-200">
+              <CardContent className="p-4">
+                <div className="flex gap-2 items-center">
+                  <Settings className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                  <p className="text-amber-800 dark:text-amber-200">
+                    Configura la conexión a la base de datos en 
+                    <Button 
+                      variant="link" 
+                      onClick={() => navigate('/ajustes')}
+                      className="px-1 text-amber-600 dark:text-amber-400"
+                    >
+                      Ajustes
+                    </Button> 
+                    para acceder a todas las funcionalidades
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </div>
         
-        <div className="relative z-10">
-          <div className="text-center mb-8">
-            <div className="text-4xl md:text-5xl lg:text-7xl font-bold mb-4 flex flex-col sm:flex-row items-center justify-center gap-3">
-              <span className="animate-float">¡Hola,</span>
-              <span className="gradient-text animate-float">David!</span>
+        <Tabs defaultValue={activeTab} value={activeTab} onValueChange={setActiveTab} className="animate-fadeInUp animate-delay-300">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="routines" className="text-base py-3">Mis Rutinas</TabsTrigger>
+            <TabsTrigger value="exercises" className="text-base py-3">Ejercicios y Equipamiento</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="routines" className="space-y-8">
+            <RoutineManager />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <Card className="transition-all hover:shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <Dumbbell className="mr-3 h-5 w-5" />
+                    Crear Rutina
+                  </CardTitle>
+                  <CardDescription>
+                    Crea una rutina personalizada según tus objetivos
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Define tus objetivos, nivel y equipamiento disponible para generar una rutina adaptada a ti.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    onClick={() => navigate('/crear-rutina')}
+                    className="gradient-btn w-full"
+                  >
+                    Crear Nueva Rutina
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
+              
+              <Card className="transition-all hover:shadow-md">
+                <CardHeader>
+                  <CardTitle className="flex items-center">
+                    <BarChart3 className="mr-3 h-5 w-5" />
+                    Calculadora IMC
+                  </CardTitle>
+                  <CardDescription>
+                    Calcula tu Índice de Masa Corporal
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    Conoce tu IMC y obtén recomendaciones basadas en tu composición corporal.
+                  </p>
+                </CardContent>
+                <CardFooter>
+                  <Button 
+                    onClick={() => navigate('/calculadora-imc')}
+                    className="w-full"
+                    variant="outline"
+                  >
+                    Calcular mi IMC
+                    <ChevronRight className="ml-2 h-4 w-4" />
+                  </Button>
+                </CardFooter>
+              </Card>
             </div>
-            <p className="text-xl text-gray-600 dark:text-gray-300 max-w-2xl mx-auto">
-              Bienvenido a tu aplicación personalizada para crear rutinas de entrenamiento adaptadas a tus objetivos.
-            </p>
-          </div>
+          </TabsContent>
           
-          <div className="flex justify-center">
-            <button 
-              onClick={() => navigate('/crear-rutina')} 
-              className="gradient-btn px-8 py-3 text-lg flex items-center group"
-            >
-              Crear Nueva Rutina
-              <ArrowRight className="ml-2 h-5 w-5 transition-transform group-hover:translate-x-1" />
-            </button>
-          </div>
-        </div>
-      </div>
-      
-      {/* Quick Actions with improved visual hierarchy - moved higher up */}
-      <div className="glass-card rounded-2xl p-6 animate-fadeInUp mb-10">
-        <h2 className="text-2xl font-bold mb-6">Acciones Rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button 
-            onClick={() => navigate('/crear-rutina')} 
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-purple-500/20"
-          >
-            <span className="font-medium">Crear Rutina</span>
-            <Dumbbell className="h-5 w-5 transition-transform group-hover:scale-110" />
-          </button>
-          
-          <button 
-            onClick={() => navigate('/calculadora-imc')}
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-blue-500/20"
-          >
-            <span className="font-medium">Calculadora IMC</span>
-            <BarChart className="h-5 w-5 transition-transform group-hover:scale-110" />
-          </button>
-          
-          <button 
-            onClick={() => navigate('/mi-rutina')}
-            className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-violet-500/20"
-          >
-            <span className="font-medium">Ver Mi Rutina</span>
-            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-          </button>
-        </div>
-      </div>
-      
-      {/* Feature Cards with hover effects */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
-        {features.map((feature, index) => (
-          <Card 
-            key={index} 
-            className="border border-gray-100 dark:border-gray-800 hover:border-purple-200 dark:hover:border-purple-900 card-3d card-hover animate-fadeInUp bg-white/70 dark:bg-gray-900/70 backdrop-blur-sm"
-            style={{ animationDelay: `${(index + 1) * 100}ms` }}
-          >
-            <CardContent className="p-6">
-              <div className="p-3 rounded-full bg-purple-100 dark:bg-purple-900/30 inline-block mb-4">
-                {feature.icon}
-              </div>
-              <h3 className="text-lg font-semibold mb-2">{feature.title}</h3>
-              <p className="text-gray-600 dark:text-gray-400">{feature.description}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-      
-      {/* Benefits Section */}
-      <div className="glass-card rounded-2xl p-8 mb-10 animate-fadeInUp card-3d">
-        <h2 className="text-2xl font-bold mb-6 text-center gradient-text">Beneficios de Usar GymFlow</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 max-w-3xl mx-auto">
-          {benefits.map((benefit, index) => (
-            <div key={index} className="flex items-center p-3 bg-white/60 dark:bg-gray-800/40 rounded-lg">
-              <div className="mr-3">{benefit.icon}</div>
-              <span className="font-medium">{benefit.text}</span>
-            </div>
-          ))}
-        </div>
+          <TabsContent value="exercises">
+            <ExerciseEquipmentManager />
+          </TabsContent>
+        </Tabs>
       </div>
     </div>
   );

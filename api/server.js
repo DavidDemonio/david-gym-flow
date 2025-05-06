@@ -286,6 +286,41 @@ app.post('/api/mysql/get-user-stats', async (req, res) => {
   }
 });
 
+// Add these new endpoints for routines database
+
+// Endpoint to initialize the routines database
+app.post('/api/mysql/initialize-routines-db', async (req, res) => {
+  try {
+    const result = await mysql.initializeRoutinesDb(req.body);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error initializing routines database:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Save routines to separate database
+app.post('/api/mysql/save-routines-separate', async (req, res) => {
+  try {
+    const result = await mysql.saveRoutinesToSeparateDb(req.body.config, req.body.routines);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error saving routines to separate database:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Get routines from separate database
+app.post('/api/mysql/get-routines-separate', async (req, res) => {
+  try {
+    const result = await mysql.getRoutinesFromSeparateDb(req.body.config);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error getting routines from separate database:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // Catch-all handler for SPA routing
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, '../dist/index.html'));

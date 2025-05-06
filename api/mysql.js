@@ -657,6 +657,162 @@ async function getUserProfile(config, email) {
   }
 }
 
+// Add these new functions for routines database
+
+async function initializeRoutinesDb(config) {
+  try {
+    // Create a connection to the routines database
+    const routinesConnection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database
+    });
+    
+    logger.info(`Connected to routines database: ${config.database}@${config.host}:${config.port}`);
+    
+    // Create routines table
+    await routinesConnection.execute(`
+      CREATE TABLE IF NOT EXISTS routines (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        objetivo VARCHAR(50),
+        nivel VARCHAR(20),
+        equipamiento VARCHAR(50),
+        dias INT,
+        exercises JSON,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    logger.info('Ensured routines table exists in routines database');
+    
+    // Close the routines connection
+    await routinesConnection.end();
+    
+    return { success: true, message: 'Routines database initialized successfully' };
+  } catch (error) {
+    logger.error('Error initializing routines database:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function saveRoutinesToSeparateDb(config, routines) {
+  try {
+    // Create a connection to the routines database
+    const routinesConnection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database
+    });
+    
+    // First ensure the table exists
+    await routinesConnection.execute(`
+      CREATE TABLE IF NOT EXISTS routines (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        objetivo VARCHAR(50),
+        nivel VARCHAR(20),
+        equipamiento VARCHAR(50),
+        dias INT,
+        exercises JSON,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    
+    // Clear existing routines
+    await routinesConnection.execute('TRUNCATE TABLE routines');
+    
+    // Insert all routines
+    for (const routine of routines) {
+      await routinesConnection.execute(
+        `INSERT INTO routines (
+          name, objetivo, nivel, equipamiento, dias, exercises, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          routine.name,
+          routine.objetivo || '',
+          routine.nivel || '',
+          routine.equipamiento || '',
+          routine.dias || 0,
+          JSON.stringify(routine.exercises || {}),
+          routine.status || 'pending'
+        ]
+      );
+    }
+    
+    // Close the routines connection
+    await routinesConnection.end();
+    
+    logger.info(`Saved ${routines.length} routines to separate database`);
+    return { success: true };
+  } catch (error) {
+    logger.error('Error saving routines to separate database:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+async function getRoutinesFromSeparateDb(config) {
+  try {
+    // Create a connection to the routines database
+    const routinesConnection = await mysql.createConnection({
+      host: config.host,
+      port: config.port,
+      user: config.user,
+      password: config.password,
+      database: config.database
+    });
+    
+    // First ensure the table exists
+    await routinesConnection.execute(`
+      CREATE TABLE IF NOT EXISTS routines (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        objetivo VARCHAR(50),
+        nivel VARCHAR(20),
+        equipamiento VARCHAR(50),
+        dias INT,
+        exercises JSON,
+        status VARCHAR(20) DEFAULT 'pending',
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      )
+    `);
+    
+    const [rows] = await routinesConnection.execute('SELECT * FROM routines');
+    
+    // Map database rows to Routine objects
+    const routines = rows.map(row => ({
+      id: row.id,
+      name: row.name,
+      objetivo: row.objetivo,
+      nivel: row.nivel,
+      equipamiento: row.equipamiento,
+      dias: row.dias,
+      exercises: JSON.parse(row.exercises),
+      status: row.status || 'pending',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+    
+    // Close the routines connection
+    await routinesConnection.end();
+    
+    logger.info(`Retrieved ${routines.length} routines from separate database`);
+    return { success: true, data: routines };
+  } catch (error) {
+    logger.error('Error getting routines from separate database:', error);
+    return { success: false, error: error.message };
+  }
+}
+
+// Add these functions to the exports
 export {
   connectToDatabase,
   testConnection,
@@ -669,5 +825,8 @@ export {
   getRoutines,
   saveUserProfile,
   getUserProfile,
-  initializeDefaultData
+  initializeDefaultData,
+  initializeRoutinesDb,
+  saveRoutinesToSeparateDb,
+  getRoutinesFromSeparateDb
 };

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -143,12 +142,12 @@ export function CreateWeeklyRoutineDialog({
       if (databaseConnected) {
         try {
           const routineToSave: Routine = {
-            id: `routine-${Date.now()}`, // Generar un ID único
+            id: Date.now(), // This generates a numeric timestamp
             name: routineName,
             objetivo: "personalizada",
             nivel: "personalizada", 
             equipamiento: "personalizada",
-            dias: days, // Fix: Convert days to number explicitly if needed
+            dias: days, // days is already a number
             exercises: routineData,
             createdAt: new Date().toISOString()
           };

@@ -70,6 +70,15 @@ export interface UserProfile {
   notificationsEnabled?: boolean;
 }
 
+// Add routines database config interface
+export interface RoutinesDbConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  database: string;
+}
+
 class MySQLConnection {
   private static instance: MySQLConnection;
   private config: DbConfig | null = null;
@@ -78,6 +87,8 @@ class MySQLConnection {
   private connected: boolean = false;
   private connectionLogs: string[] = [];
   private connectionAttemptInProgress: boolean = false;
+  private routinesDbConfig: RoutinesDbConfig | null = null;
+  private routinesDbConnected: boolean = false;
   
   private constructor() {
     // Get saved configuration from localStorage
@@ -569,6 +580,13 @@ class MySQLConnection {
   
   // Routine CRUD operations
   public async saveRoutines(routines: Routine[]): Promise<boolean> {
+    // First try to save to the separate routines database
+    if (this.routinesDbConfig && this.routinesDbConnected) {
+      const result = await this.saveRoutinesToSeparateDb(routines);
+      if (result) return true;
+    }
+    
+    // Fallback to original method if separate db failed
     try {
       if (!this.connected || !this.config) {
         // Fallback to localStorage if not connected
@@ -602,6 +620,8 @@ class MySQLConnection {
       } else {
         throw new Error(result.error);
       }
+      
+      return true;
     } catch (err) {
       this.log(`Error saving routines: ${err}`);
       console.error('Error saving routines:', err);
@@ -618,6 +638,17 @@ class MySQLConnection {
   }
   
   public async getRoutines(): Promise<Routine[]> {
+    // First try to get from the separate routines database
+    if (this.routinesDbConfig && this.routinesDbConnected) {
+      try {
+        const routines = await this.getRoutinesFromSeparateDb();
+        if (routines.length > 0) return routines;
+      } catch (err) {
+        console.error('Error getting routines from separate database:', err);
+      }
+    }
+    
+    // Fallback to original method if separate db failed
     try {
       if (!this.connected || !this.config) {
         // Fallback to localStorage if not connected
@@ -644,7 +675,6 @@ class MySQLConnection {
         throw new Error(result.error);
       }
     } catch (err) {
-      // Fallback to localStorage
       this.log(`Error retrieving routines from database: ${err}`);
       console.error('Error getting routines:', err);
       
@@ -704,9 +734,162 @@ class MySQLConnection {
     this.log('Disconnected from database');
   }
   
-  // Load environment variables from envManager
-  public async loadEnvVariables(): Promise<void> {
-    const vars = envManager.getAll();
+  // Initialize routines database connection
+  private async initializeRoutinesDbConnection() {
+    if (!this.routinesDbConfig || this.connectionAttemptInProgress) return;
+    
+    try {
+      // Get routines database config from env variables
+      const env = await envManager.getAllVariables();
+      
+      this.routinesDbConfig = {
+        host: env.ROUTINES_MYSQL_HOST || '',
+        port: parseInt(env.ROUTINES_MYSQL_PORT || '3306'),
+        user: env.ROUTINES_MYSQL_USER || '',
+        password: env.ROUTINES_MYSQL_PASSWORD || '',
+        database: env.ROUTINES_MYSQL_DATABASE || ''
+      };
+      
+      // Check if we have valid config
+      if (!this.routinesDbConfig.host || !this.routinesDbConfig.user || !this.routinesDbConfig.database) {
+        this.log('Routines database configuration is incomplete');
+        this.routinesDbConnected = false;
+        return;
+      }
+      
+      // Initialize the routines database
+      const response = await fetch('/api/mysql/initialize-routines-db', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.routinesDbConfig),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        this.routinesDbConnected = true;
+        this.log(`Routines database initialized: ${this.routinesDbConfig.host}:${this.routinesDbConfig.port}`);
+      } else {
+        this.routinesDbConnected = false;
+        this.log(`Error initializing routines database: ${result.error}`);
+      }
+    } catch (err) {
+      this.routinesDbConnected = false;
+      this.log(`Error initializing routines database: ${err}`);
+      console.error('Routines database initialization error:', err);
+    }
+  }
+  
+  public async setRoutinesDbConfig(config: RoutinesDbConfig): Promise<void> {
+    this.routinesDbConfig = config;
+    
+    // Save to environment variables
+    await envManager.updateVariables({
+      ROUTINES_MYSQL_HOST: config.host,
+      ROUTINES_MYSQL_PORT: config.port.toString(),
+      ROUTINES_MYSQL_USER: config.user,
+      ROUTINES_MYSQL_PASSWORD: config.password,
+      ROUTINES_MYSQL_DATABASE: config.database
+    });
+    
+    // Initialize connection
+    await this.initializeRoutinesDbConnection();
+    
+    this.log(`Routines database configuration updated: ${config.host}:${config.port}`);
+  }
+  
+  public getRoutinesDbConfig(): RoutinesDbConfig | null {
+    return this.routinesDbConfig;
+  }
+  
+  public isRoutinesDbConnected(): boolean {
+    return this.routinesDbConnected;
+  }
+  
+  // Method to save routines to the separate database
+  public async saveRoutinesToSeparateDb(routines: Routine[]): Promise<boolean> {
+    if (!this.routinesDbConfig) {
+      this.log('Cannot save routines: No routines database configuration');
+      return false;
+    }
+    
+    try {
+      const response = await fetch('/api/mysql/save-routines-separate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.routinesDbConfig,
+          routines
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        this.log(`Saved ${routines.length} routines to separate database`);
+        return true;
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      this.log(`Error saving routines to separate database: ${err}`);
+      console.error('Error saving routines to separate database:', err);
+      return false;
+    }
+  }
+  
+  // Method to get routines from the separate database
+  public async getRoutinesFromSeparateDb(): Promise<Routine[]> {
+    if (!this.routinesDbConfig) {
+      this.log('Cannot get routines: No routines database configuration');
+      return [];
+    }
+    
+    try {
+      const response = await fetch('/api/mysql/get-routines-separate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.routinesDbConfig
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! Status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        this.log(`Retrieved ${result.data.length} routines from separate database`);
+        return result.data;
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (err) {
+      this.log(`Error getting routines from separate database: ${err}`);
+      console.error('Error getting routines from separate database:', err);
+      return [];
+    }
+  }
+  
+  // Add method to load environment variables with special handling for routines database
+  public async loadEnvironmentVariables(): Promise<void> {
+    const vars = await envManager.getAllVariables();
     
     // Apply MySQL config if available
     if (vars.MYSQL_HOST && vars.MYSQL_USER && vars.MYSQL_PASSWORD) {
@@ -743,6 +926,24 @@ class MySQLConnection {
         this.log('Loaded SMTP configuration from environment variables');
       }
     }
+    
+    // Apply routines database config if available
+    if (vars.ROUTINES_MYSQL_HOST && vars.ROUTINES_MYSQL_USER && vars.ROUTINES_MYSQL_DATABASE) {
+      const config = {
+        host: vars.ROUTINES_MYSQL_HOST,
+        port: parseInt(vars.ROUTINES_MYSQL_PORT || '3306'),
+        user: vars.ROUTINES_MYSQL_USER,
+        password: vars.ROUTINES_MYSQL_PASSWORD || '',
+        database: vars.ROUTINES_MYSQL_DATABASE
+      };
+      
+      // Only update if something changed
+      if (JSON.stringify(this.routinesDbConfig) !== JSON.stringify(config)) {
+        this.routinesDbConfig = config;
+        await this.initializeRoutinesDbConnection();
+        this.log('Loaded routines database configuration from environment variables');
+      }
+    }
   }
   
   // Force reconnect to database
@@ -764,5 +965,5 @@ export const mysqlConnection = MySQLConnection.getInstance();
 
 // Try to load environment variables on module import
 setTimeout(() => {
-  mysqlConnection.loadEnvVariables();
+  mysqlConnection.loadEnvironmentVariables();
 }, 0);
