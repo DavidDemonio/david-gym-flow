@@ -41,21 +41,21 @@ const CrearRutina = () => {
 
   // Cargar ejercicios desde la base de datos al iniciar
   useEffect(() => {
-    const checkDatabaseConnection = () => {
+    const checkDatabaseConnection = async () => {
       const isConnected = mysqlConnection.isConnected();
       setDatabaseConnected(isConnected);
       
       if (isConnected) {
         // Cargar ejercicios desde la base de datos
-        const loadExercises = async () => {
+        try {
           const exercises = await mysqlConnection.getExercises();
           if (exercises && exercises.length > 0) {
             setAvailableExercises(exercises);
             console.log("Ejercicios cargados desde MySQL:", exercises.length);
           }
-        };
-        
-        loadExercises();
+        } catch (err) {
+          console.error("Error al cargar ejercicios:", err);
+        }
       }
     };
     
@@ -148,31 +148,53 @@ const CrearRutina = () => {
         const dayConfig = dayFocus[i % dayFocus.length];
         
         // Filtrar ejercicios para este día
-        let filteredExercises = availableExercises.filter(ex => 
-          // Filtrar por dificultad si está disponible
-          (!ex.difficulty || ex.difficulty === difficultyLevel) &&
-          // Filtrar por equipamiento si está disponible
-          (!ex.equipment || 
-           (formData.equipamiento === 'completo') || 
-           (Array.isArray(ex.equipment) && ex.equipment.includes(equipmentType)) || 
-           (typeof ex.equipment === 'string' && ex.equipment === equipmentType) || 
-           (Array.isArray(ex.equipment) && ex.equipment.includes("Sin equipo")) ||
-           (typeof ex.equipment === 'string' && ex.equipment === "Sin equipo")) &&
-          // Filtrar por grupo muscular
-          ex.muscleGroups.some(mg => dayConfig.focus.includes(mg))
-        );
+        let filteredExercises = availableExercises.filter(ex => {
+          // Verificar dificultad si está disponible
+          const difficultyMatch = !ex.difficulty || ex.difficulty === difficultyLevel;
+          
+          // Verificar grupo muscular
+          const muscleMatch = ex.muscleGroups.some(mg => dayConfig.focus.includes(mg));
+          
+          // Verificar equipamiento
+          let equipmentMatch = false;
+          
+          if (!ex.equipment) {
+            equipmentMatch = true; // Sin requisitos de equipo
+          } else if (formData.equipamiento === 'completo') {
+            equipmentMatch = true; // Tenemos todo el equipo disponible
+          } else if (Array.isArray(ex.equipment)) {
+            // Verificar si alguna de las opciones de equipo coincide
+            equipmentMatch = ex.equipment.includes("Sin equipo") || ex.equipment.includes(equipmentType);
+          } else {
+            // Si equipment es un string individual
+            equipmentMatch = ex.equipment === "Sin equipo" || ex.equipment === equipmentType;
+          }
+          
+          return difficultyMatch && muscleMatch && equipmentMatch;
+        });
         
         // Si no hay suficientes ejercicios, agregar algunos genéricos
         if (filteredExercises.length < 4) {
-          const genericExercises = availableExercises.filter(ex => 
-            !filteredExercises.includes(ex) &&
-            (!ex.equipment || 
-             (formData.equipamiento === 'completo') || 
-             (Array.isArray(ex.equipment) && ex.equipment.includes(equipmentType)) || 
-             (typeof ex.equipment === 'string' && ex.equipment === equipmentType) || 
-             (Array.isArray(ex.equipment) && ex.equipment.includes("Sin equipo")) ||
-             (typeof ex.equipment === 'string' && ex.equipment === "Sin equipo"))
-          );
+          const genericExercises = availableExercises.filter(ex => {
+            if (filteredExercises.includes(ex)) return false;
+            
+            // Verificar solo el equipamiento para ejercicios genéricos
+            let equipmentMatch = false;
+            
+            if (!ex.equipment) {
+              equipmentMatch = true; // Sin requisitos de equipo
+            } else if (formData.equipamiento === 'completo') {
+              equipmentMatch = true; // Tenemos todo el equipo disponible
+            } else if (Array.isArray(ex.equipment)) {
+              // Verificar si alguna de las opciones de equipo coincide
+              equipmentMatch = ex.equipment.includes("Sin equipo") || ex.equipment.includes(equipmentType);
+            } else {
+              // Si equipment es un string individual
+              equipmentMatch = ex.equipment === "Sin equipo" || ex.equipment === equipmentType;
+            }
+            
+            return equipmentMatch;
+          });
           
           // Añadir ejercicios genéricos hasta tener al menos 4
           filteredExercises = [...filteredExercises, ...genericExercises.slice(0, 4 - filteredExercises.length)];

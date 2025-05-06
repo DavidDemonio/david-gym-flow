@@ -6,8 +6,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
-import { Send, TestTube, Save, User } from 'lucide-react';
+import { Send, TestTube, Save, User, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 const EmailSettingsForm: React.FC = () => {
   const { toast } = useToast();
@@ -25,6 +26,11 @@ const EmailSettingsForm: React.FC = () => {
     notificationsEnabled: false
   });
   
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle');
+  const [sendStatus, setSendStatus] = useState<'idle' | 'sending' | 'success' | 'error'>('idle');
+  const [saveProfileStatus, setSaveProfileStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const [saveEmailStatus, setSaveEmailStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+
   // Load saved configurations
   useEffect(() => {
     const savedEmailConfig = mysqlConnection.getEmailConfig();
@@ -49,7 +55,7 @@ const EmailSettingsForm: React.FC = () => {
   };
   
   // Save email configuration
-  const handleSaveEmailConfig = () => {
+  const handleSaveEmailConfig = async () => {
     // Basic validation
     if (!emailConfig.smtpHost || !emailConfig.smtpUser || !emailConfig.fromEmail) {
       toast({
@@ -60,15 +66,32 @@ const EmailSettingsForm: React.FC = () => {
       return;
     }
     
-    mysqlConnection.setEmailConfig(emailConfig);
-    toast({
-      title: "Configuración guardada",
-      description: "La configuración de correo ha sido guardada correctamente.",
-    });
+    setSaveEmailStatus('saving');
+    try {
+      mysqlConnection.setEmailConfig(emailConfig);
+      setSaveEmailStatus('success');
+      toast({
+        title: "Configuración guardada",
+        description: "La configuración de correo ha sido guardada correctamente.",
+      });
+      
+      // Reset status after delay
+      setTimeout(() => setSaveEmailStatus('idle'), 2000);
+    } catch (err) {
+      setSaveEmailStatus('error');
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: `Error: ${err}`,
+      });
+      
+      // Reset status after delay
+      setTimeout(() => setSaveEmailStatus('idle'), 2000);
+    }
   };
   
   // Save user profile
-  const handleSaveUserProfile = () => {
+  const handleSaveUserProfile = async () => {
     // Basic validation
     if (!userProfile.email) {
       toast({
@@ -79,33 +102,68 @@ const EmailSettingsForm: React.FC = () => {
       return;
     }
     
-    mysqlConnection.setUserProfile(userProfile);
-    toast({
-      title: "Perfil guardado",
-      description: "La información de usuario ha sido guardada correctamente.",
-    });
+    setSaveProfileStatus('saving');
+    try {
+      await mysqlConnection.setUserProfile(userProfile);
+      setSaveProfileStatus('success');
+      toast({
+        title: "Perfil guardado",
+        description: "La información de usuario ha sido guardada correctamente.",
+      });
+      
+      // Reset status after delay
+      setTimeout(() => setSaveProfileStatus('idle'), 2000);
+    } catch (err) {
+      setSaveProfileStatus('error');
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: `Error: ${err}`,
+      });
+      
+      // Reset status after delay
+      setTimeout(() => setSaveProfileStatus('idle'), 2000);
+    }
   };
   
   // Test SMTP connection
-  const handleTestEmailConfig = () => {
-    const result = mysqlConnection.testEmailConfig();
-    
-    if (result.success) {
-      toast({
-        title: "Conexión exitosa",
-        description: result.message,
-      });
-    } else {
+  const handleTestEmailConfig = async () => {
+    setTestStatus('testing');
+    try {
+      const result = await mysqlConnection.testEmailConfig();
+      
+      if (result.success) {
+        setTestStatus('success');
+        toast({
+          title: "Conexión exitosa",
+          description: result.message,
+        });
+      } else {
+        setTestStatus('error');
+        toast({
+          variant: "destructive",
+          title: "Error de conexión",
+          description: result.message,
+        });
+      }
+      
+      // Reset status after delay
+      setTimeout(() => setTestStatus('idle'), 3000);
+    } catch (err) {
+      setTestStatus('error');
       toast({
         variant: "destructive",
         title: "Error de conexión",
-        description: result.message,
+        description: `Error inesperado: ${err}`,
       });
+      
+      // Reset status after delay
+      setTimeout(() => setTestStatus('idle'), 3000);
     }
   };
   
   // Send test email
-  const handleSendTestEmail = () => {
+  const handleSendTestEmail = async () => {
     if (!userProfile.email) {
       toast({
         variant: "destructive",
@@ -115,23 +173,107 @@ const EmailSettingsForm: React.FC = () => {
       return;
     }
     
-    const result = mysqlConnection.sendEmail(
-      userProfile.email,
-      "Prueba de correo GymFlow",
-      `Hola ${userProfile.name || 'usuario'},\n\nEste es un correo de prueba desde la aplicación GymFlow.\n\nSaludos!`
-    );
-    
-    if (result.success) {
-      toast({
-        title: "Correo enviado",
-        description: result.message,
-      });
-    } else {
+    setSendStatus('sending');
+    try {
+      const result = await mysqlConnection.sendEmail(
+        userProfile.email,
+        "Prueba de correo GymFlow",
+        `Hola ${userProfile.name || 'usuario'},\n\nEste es un correo de prueba desde la aplicación GymFlow.\n\nSaludos!`
+      );
+      
+      if (result.success) {
+        setSendStatus('success');
+        toast({
+          title: "Correo enviado",
+          description: result.message,
+        });
+      } else {
+        setSendStatus('error');
+        toast({
+          variant: "destructive",
+          title: "Error al enviar",
+          description: result.message,
+        });
+      }
+      
+      // Reset status after delay
+      setTimeout(() => setSendStatus('idle'), 3000);
+    } catch (err) {
+      setSendStatus('error');
       toast({
         variant: "destructive",
         title: "Error al enviar",
-        description: result.message,
+        description: `Error inesperado: ${err}`,
       });
+      
+      // Reset status after delay
+      setTimeout(() => setSendStatus('idle'), 3000);
+    }
+  };
+  
+  const renderTestButton = () => {
+    switch (testStatus) {
+      case 'testing':
+        return (
+          <Button disabled variant="outline" className="flex-1">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Probando...
+          </Button>
+        );
+      case 'success':
+        return (
+          <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-600">
+            <Check className="mr-2 h-4 w-4" />
+            Conexión exitosa
+          </Button>
+        );
+      case 'error':
+        return (
+          <Button variant="destructive" className="flex-1">
+            <AlertCircle className="mr-2 h-4 w-4" />
+            Error de conexión
+          </Button>
+        );
+      default:
+        return (
+          <Button onClick={handleTestEmailConfig} variant="outline" className="flex-1">
+            <TestTube className="mr-2 h-4 w-4" />
+            Probar Conexión
+          </Button>
+        );
+    }
+  };
+  
+  const renderSendButton = () => {
+    switch (sendStatus) {
+      case 'sending':
+        return (
+          <Button disabled variant="outline" className="flex-1">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Enviando...
+          </Button>
+        );
+      case 'success':
+        return (
+          <Button variant="outline" className="flex-1 bg-green-50 border-green-200 text-green-600">
+            <Check className="mr-2 h-4 w-4" />
+            Correo enviado
+          </Button>
+        );
+      case 'error':
+        return (
+          <Button variant="destructive" className="flex-1">
+            <AlertCircle className="mr-2 h-4 w-4" />
+            Error de envío
+          </Button>
+        );
+      default:
+        return (
+          <Button onClick={handleSendTestEmail} variant="outline" className="flex-1">
+            <Send className="mr-2 h-4 w-4" />
+            Enviar Email de Prueba
+          </Button>
+        );
     }
   };
   
@@ -139,13 +281,20 @@ const EmailSettingsForm: React.FC = () => {
     <div className="space-y-6">
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            Perfil de Usuario
-          </CardTitle>
-          <CardDescription>
-            Configure su perfil para recibir notificaciones y rutinas por correo
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <User className="h-5 w-5" />
+                Perfil de Usuario
+              </CardTitle>
+              <CardDescription>
+                Configure su perfil para recibir notificaciones y rutinas por correo
+              </CardDescription>
+            </div>
+            {saveProfileStatus === 'success' && (
+              <Badge variant="success">Guardado</Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -180,19 +329,39 @@ const EmailSettingsForm: React.FC = () => {
           </div>
         </CardContent>
         <CardFooter>
-          <Button onClick={handleSaveUserProfile} className="w-full">
-            <Save className="mr-2 h-4 w-4" />
-            Guardar Perfil
+          <Button 
+            onClick={handleSaveUserProfile} 
+            className="w-full"
+            disabled={saveProfileStatus === 'saving'}
+          >
+            {saveProfileStatus === 'saving' ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Guardar Perfil
+              </>
+            )}
           </Button>
         </CardFooter>
       </Card>
       
       <Card className="shadow-md">
         <CardHeader>
-          <CardTitle>Configuración SMTP</CardTitle>
-          <CardDescription>
-            Configure el servidor de correo electrónico para enviar notificaciones
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle>Configuración SMTP</CardTitle>
+              <CardDescription>
+                Configure el servidor de correo electrónico para enviar notificaciones
+              </CardDescription>
+            </div>
+            {saveEmailStatus === 'success' && (
+              <Badge variant="success">Guardado</Badge>
+            )}
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -250,20 +419,27 @@ const EmailSettingsForm: React.FC = () => {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-3">
-          <Button onClick={handleSaveEmailConfig} className="w-full">
-            <Save className="mr-2 h-4 w-4" />
-            Guardar Configuración SMTP
+          <Button 
+            onClick={handleSaveEmailConfig} 
+            className="w-full"
+            disabled={saveEmailStatus === 'saving'}
+          >
+            {saveEmailStatus === 'saving' ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Guardando...
+              </>
+            ) : (
+              <>
+                <Save className="mr-2 h-4 w-4" />
+                Guardar Configuración SMTP
+              </>
+            )}
           </Button>
           
           <div className="flex gap-2 w-full">
-            <Button onClick={handleTestEmailConfig} variant="outline" className="flex-1">
-              <TestTube className="mr-2 h-4 w-4" />
-              Probar Conexión
-            </Button>
-            <Button onClick={handleSendTestEmail} variant="outline" className="flex-1">
-              <Send className="mr-2 h-4 w-4" />
-              Enviar Email de Prueba
-            </Button>
+            {renderTestButton()}
+            {renderSendButton()}
           </div>
         </CardFooter>
       </Card>

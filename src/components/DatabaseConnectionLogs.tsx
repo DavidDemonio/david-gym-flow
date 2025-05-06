@@ -5,21 +5,26 @@ import { Button } from '@/components/ui/button';
 import { Trash2, RefreshCw } from 'lucide-react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 
 interface DatabaseConnectionLogsProps {
   maxHeight?: string;
   autoRefresh?: boolean;
+  refreshInterval?: number;
 }
 
 const DatabaseConnectionLogs: React.FC<DatabaseConnectionLogsProps> = ({ 
   maxHeight = "300px", 
-  autoRefresh = false 
+  autoRefresh = false,
+  refreshInterval = 5000 
 }) => {
   const [logs, setLogs] = useState<string[]>([]);
+  const [isConnected, setIsConnected] = useState(false);
 
   // Get logs from the connection
   const refreshLogs = () => {
     setLogs(mysqlConnection.getConnectionLogs());
+    setIsConnected(mysqlConnection.isConnected());
   };
 
   // Initial load and auto-refresh if enabled
@@ -27,10 +32,10 @@ const DatabaseConnectionLogs: React.FC<DatabaseConnectionLogsProps> = ({
     refreshLogs();
     
     if (autoRefresh) {
-      const interval = setInterval(refreshLogs, 5000); // Refresh every 5 seconds
+      const interval = setInterval(refreshLogs, refreshInterval); 
       return () => clearInterval(interval);
     }
-  }, [autoRefresh]);
+  }, [autoRefresh, refreshInterval]);
 
   // Clear logs
   const handleClearLogs = () => {
@@ -41,7 +46,12 @@ const DatabaseConnectionLogs: React.FC<DatabaseConnectionLogsProps> = ({
   return (
     <Card className="shadow-md">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
-        <CardTitle className="text-lg">Logs de Conexión</CardTitle>
+        <div className="flex items-center gap-2">
+          <CardTitle className="text-lg">Logs de Conexión</CardTitle>
+          <Badge variant={isConnected ? "success" : "destructive"}>
+            {isConnected ? "Conectado" : "Desconectado"}
+          </Badge>
+        </div>
         <div className="flex gap-2">
           <Button size="sm" variant="outline" onClick={refreshLogs}>
             <RefreshCw className="h-4 w-4 mr-1" />
@@ -54,7 +64,7 @@ const DatabaseConnectionLogs: React.FC<DatabaseConnectionLogsProps> = ({
         </div>
       </CardHeader>
       <CardContent>
-        <ScrollArea className={`rounded border p-2 bg-muted/20 max-h-[${maxHeight}]`}>
+        <ScrollArea className={`rounded border p-2 bg-muted/20`} style={{ maxHeight }}>
           {logs.length === 0 ? (
             <p className="text-muted-foreground py-6 text-center">No hay registros de actividad.</p>
           ) : (

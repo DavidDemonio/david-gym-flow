@@ -28,7 +28,7 @@ const ThemeToggle = () => {
     // Remove transition class after theme change to prevent transitions during page load
     const timer = setTimeout(() => {
       document.body.classList.remove('theme-transition');
-    }, 500);
+    }, 1000); // Increased transition time for smoother effect
     
     return () => clearTimeout(timer);
   }, [isDark]);
@@ -38,15 +38,24 @@ const ThemeToggle = () => {
     const savedTheme = localStorage.getItem('theme');
     const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
     
-    // Add base transition styles
+    // Add base transition styles with longer duration
     const style = document.createElement('style');
     style.innerHTML = `
       .theme-transition,
       .theme-transition *,
       .theme-transition *:before,
       .theme-transition *:after {
-        transition: all 0.5s ease-out !important;
+        transition: all 0.8s cubic-bezier(0.16, 1, 0.3, 1) !important;
         transition-delay: 0 !important;
+      }
+      
+      /* Add special transitions for specific elements */
+      .theme-transition .card,
+      .theme-transition .button,
+      .theme-transition .bg-background {
+        transition: background-color 1s cubic-bezier(0.16, 1, 0.3, 1), 
+                    border-color 1s cubic-bezier(0.16, 1, 0.3, 1),
+                    color 0.7s cubic-bezier(0.16, 1, 0.3, 1) !important;
       }
     `;
     document.head.appendChild(style);
@@ -65,11 +74,11 @@ const ThemeToggle = () => {
       pressed={isDark} 
       onPressedChange={() => setIsDark(!isDark)}
       aria-label="Cambiar tema"
-      className="w-10 h-10 rounded-full transition-all duration-300"
+      className="w-10 h-10 rounded-full transition-all duration-500"
     >
       {isDark ? 
-        <Moon className="h-5 w-5 transition-transform duration-500 rotate-0" /> : 
-        <Sun className="h-5 w-5 transition-transform duration-500 rotate-90" />
+        <Moon className="h-5 w-5 transition-transform duration-700 rotate-0" /> : 
+        <Sun className="h-5 w-5 transition-transform duration-700 rotate-90" />
       }
     </Toggle>
   );

@@ -1,6 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { envManager, EnvVariables } from '../utils/envManager';
+import { mysqlConnection } from '../utils/mysqlConnection';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -8,13 +9,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Download, Upload, Save, RefreshCw } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Download, Upload, Save, RefreshCw, Check, AlertTriangle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
 const EnvEditor: React.FC = () => {
   const { toast } = useToast();
   const [variables, setVariables] = useState<EnvVariables>({});
   const [envContent, setEnvContent] = useState<string>('');
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   
   useEffect(() => {
     // Load variables on component mount
@@ -28,15 +31,36 @@ const EnvEditor: React.FC = () => {
   };
   
   // Save all variables
-  const handleSaveVariables = () => {
-    envManager.setAll(variables);
-    toast({
-      title: "Variables guardadas",
-      description: "Las variables de entorno han sido actualizadas.",
-    });
-    
-    // Refresh the env content display
-    setEnvContent(envManager.exportToEnvFormat());
+  const handleSaveVariables = async () => {
+    setSaveStatus('saving');
+    try {
+      envManager.setAll(variables);
+      
+      // Wait a moment for the variables to apply
+      await new Promise(resolve => setTimeout(resolve, 500));
+      
+      // Refresh the env content display
+      setEnvContent(envManager.exportToEnvFormat());
+      
+      setSaveStatus('saved');
+      toast({
+        title: "Variables guardadas",
+        description: "Las variables de entorno han sido actualizadas y aplicadas.",
+      });
+      
+      // Reset status after a delay
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    } catch (err) {
+      setSaveStatus('error');
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: "Hubo un problema al guardar las variables.",
+      });
+      
+      // Reset status after a delay
+      setTimeout(() => setSaveStatus('idle'), 2000);
+    }
   };
   
   // Import variables from .env format
@@ -45,8 +69,21 @@ const EnvEditor: React.FC = () => {
       setVariables(envManager.getAll());
       toast({
         title: "Variables importadas",
-        description: "Las variables de entorno han sido importadas correctamente.",
+        description: "Las variables de entorno han sido importadas y aplicadas correctamente.",
       });
+      
+      // Wait for MySQL to reconnect if needed
+      setTimeout(async () => {
+        if (mysqlConnection.isConnected()) {
+          const result = await mysqlConnection.testConnection();
+          if (result.success) {
+            toast({
+              title: "Conexión a MySQL restaurada",
+              description: "Se ha restablecido la conexión a la base de datos.",
+            });
+          }
+        }
+      }, 1000);
     } else {
       toast({
         variant: "destructive",
@@ -76,13 +113,54 @@ const EnvEditor: React.FC = () => {
     });
   };
   
+  // Render save button with appropriate status
+  const renderSaveButton = () => {
+    switch (saveStatus) {
+      case 'saving':
+        return (
+          <Button disabled className="flex items-center gap-1">
+            <RefreshCw className="h-4 w-4 animate-spin" />
+            Guardando...
+          </Button>
+        );
+      case 'saved':
+        return (
+          <Button variant="outline" className="flex items-center gap-1 bg-green-50 border-green-200 text-green-600">
+            <Check className="h-4 w-4" />
+            ¡Guardado!
+          </Button>
+        );
+      case 'error':
+        return (
+          <Button variant="destructive" className="flex items-center gap-1">
+            <AlertTriangle className="h-4 w-4" />
+            Error
+          </Button>
+        );
+      default:
+        return (
+          <Button onClick={handleSaveVariables} className="flex items-center gap-1">
+            <Save className="h-4 w-4" />
+            Guardar Variables
+          </Button>
+        );
+    }
+  };
+  
   return (
     <Card className="shadow-md">
       <CardHeader>
-        <CardTitle>Variables de Entorno (.env)</CardTitle>
-        <CardDescription>
-          Configure las variables de entorno para su aplicación
-        </CardDescription>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Variables de Entorno (.env)</CardTitle>
+            <CardDescription>
+              Configure las variables de entorno para su aplicación
+            </CardDescription>
+          </div>
+          <Badge variant={mysqlConnection.isConnected() ? "success" : "warning"}>
+            {mysqlConnection.isConnected() ? "MySQL Conectado" : "MySQL Desconectado"}
+          </Badge>
+        </div>
       </CardHeader>
       <CardContent>
         <Tabs defaultValue="form">
@@ -223,7 +301,7 @@ const EnvEditor: React.FC = () => {
               <div className="flex justify-end space-x-2">
                 <Button onClick={handleImportEnv} className="flex items-center gap-1">
                   <Upload className="h-4 w-4" />
-                  Importar
+                  Importar y Aplicar
                 </Button>
               </div>
             </div>
@@ -237,10 +315,7 @@ const EnvEditor: React.FC = () => {
           Descargar .env
         </Button>
         
-        <Button onClick={handleSaveVariables} className="flex items-center gap-1">
-          <Save className="h-4 w-4" />
-          Guardar Variables
-        </Button>
+        {renderSaveButton()}
       </CardFooter>
     </Card>
   );

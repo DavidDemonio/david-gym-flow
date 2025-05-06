@@ -31,6 +31,8 @@ class EnvManager {
   
   private constructor() {
     this.loadFromStorage();
+    // Apply variables when the app loads
+    setTimeout(() => this.applyVariables(), 0);
   }
   
   public static getInstance(): EnvManager {
@@ -41,15 +43,36 @@ class EnvManager {
   }
   
   private loadFromStorage(): void {
+    // Try to load from localStorage first
     const storedVars = localStorage.getItem('env_variables');
     if (storedVars) {
       try {
         this.variables = JSON.parse(storedVars);
+        console.log('Environment variables loaded from localStorage');
       } catch (err) {
         console.error('Error loading environment variables from storage:', err);
         this.variables = {};
       }
+    } else {
+      // If no variables in localStorage, try to load from .env
+      this.loadFromEnvFile();
     }
+  }
+  
+  // This simulates loading from a .env file
+  // In a real app with server access, this would read from actual .env files
+  private loadFromEnvFile(): void {
+    // This is a placeholder - we can't actually read files from the filesystem in a browser
+    console.log('loadFromEnvFile is a simulation in browser environment');
+    
+    // For demo purposes, we'll just use some default values if nothing is in localStorage
+    const defaultVars: EnvVariables = {
+      APP_NAME: 'GymFlow',
+      DEBUG_MODE: 'false'
+    };
+    
+    this.variables = defaultVars;
+    this.saveToStorage();
   }
   
   public get(key: string): string | undefined {
@@ -59,6 +82,7 @@ class EnvManager {
   public set(key: string, value: string): void {
     this.variables = { ...this.variables, [key]: value };
     this.saveToStorage();
+    this.applyVariable(key, value);
   }
   
   public getAll(): EnvVariables {
@@ -68,10 +92,37 @@ class EnvManager {
   public setAll(variables: EnvVariables): void {
     this.variables = { ...variables };
     this.saveToStorage();
+    this.applyVariables();
   }
   
   private saveToStorage(): void {
     localStorage.setItem('env_variables', JSON.stringify(this.variables));
+  }
+  
+  // Apply all variables to the app's environment
+  private applyVariables(): void {
+    // This is where we would apply environment variables to the application
+    // In a real Node.js app, this might set process.env values
+    // In a browser app, we need to apply these variables to our services
+    
+    console.log('Applying environment variables to application services');
+    
+    // Import is within the function to avoid circular reference
+    import('./mysqlConnection').then(module => {
+      const mysqlConnection = module.mysqlConnection;
+      mysqlConnection.loadEnvVariables();
+    }).catch(err => {
+      console.error('Error importing mysqlConnection:', err);
+    });
+  }
+  
+  // Apply a single variable
+  private applyVariable(key: string, value: string): void {
+    // Apply specific variable changes if needed
+    if (key.startsWith('MYSQL_') || key.startsWith('SMTP_')) {
+      // Only reload MySQL or SMTP configurations when relevant variables change
+      this.applyVariables();
+    }
   }
   
   // Export variables to a .env format string
@@ -112,6 +163,7 @@ class EnvManager {
       // Update variables and save
       this.variables = { ...this.variables, ...newVars };
       this.saveToStorage();
+      this.applyVariables(); // Apply the new variables
       return true;
     } catch (err) {
       console.error('Error importing environment variables:', err);
