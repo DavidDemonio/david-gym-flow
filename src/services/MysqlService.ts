@@ -94,7 +94,7 @@ class MysqlService {
       
       if (result.success && result.env) {
         // Update local environment manager
-        await envManager.setVariables(result.env);
+        await envManager.updateVariables(result.env);
         return result.env;
       } else {
         throw new Error('Could not load environment variables');

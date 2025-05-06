@@ -26,6 +26,13 @@ export interface EnvVariables {
   APP_NAME?: string;
   DEBUG_MODE?: string;
   
+  // Routines database configuration
+  ROUTINES_MYSQL_HOST?: string;
+  ROUTINES_MYSQL_PORT?: string;
+  ROUTINES_MYSQL_USER?: string;
+  ROUTINES_MYSQL_PASSWORD?: string;
+  ROUTINES_MYSQL_DATABASE?: string;
+  
   // Add index signature to make it compatible with Record<string, string>
   [key: string]: string | undefined;
 }
@@ -193,6 +200,10 @@ class EnvManager {
     return { ...this.variables };
   }
   
+  public getAllVariables(): Promise<EnvVariables> {
+    return Promise.resolve({ ...this.variables });
+  }
+  
   public setAll(variables: EnvVariables): void {
     this.variables = { ...variables };
     this.saveToStorage();
@@ -210,6 +221,28 @@ class EnvManager {
     this.sendToServer(recordToSend).catch(console.error);
   }
   
+  public async updateVariables(variables: EnvVariables): Promise<void> {
+    this.variables = { ...this.variables, ...variables };
+    this.saveToStorage();
+    this.applyVariables();
+    
+    // Send to server
+    const recordToSend: Record<string, string> = {};
+    Object.entries(variables).forEach(([key, value]) => {
+      if (value !== undefined) {
+        recordToSend[key] = value;
+      }
+    });
+    
+    await this.sendToServer(recordToSend);
+  }
+  
+  public async setVariables(variables: EnvVariables): Promise<void> {
+    this.variables = { ...variables };
+    this.saveToStorage();
+    this.applyVariables();
+  }
+  
   private saveToStorage(): void {
     localStorage.setItem('env_variables', JSON.stringify(this.variables));
   }
@@ -221,7 +254,8 @@ class EnvManager {
     // Import is within the function to avoid circular reference
     import('./mysqlConnection').then(module => {
       const mysqlConnection = module.mysqlConnection;
-      mysqlConnection.loadEnvVariables();
+      // Call loadEnvironmentVariables() instead of non-existent loadEnvVariables()
+      mysqlConnection.loadEnvironmentVariables();
     }).catch(err => {
       console.error('Error importing mysqlConnection:', err);
     });
@@ -305,7 +339,8 @@ class EnvManager {
         // Keep passwords from current variables
         const passwords = {
           MYSQL_PASSWORD: this.variables.MYSQL_PASSWORD,
-          SMTP_PASSWORD: this.variables.SMTP_PASSWORD
+          SMTP_PASSWORD: this.variables.SMTP_PASSWORD,
+          ROUTINES_MYSQL_PASSWORD: this.variables.ROUTINES_MYSQL_PASSWORD
         };
         
         // Merge with existing variables, prioritizing server values

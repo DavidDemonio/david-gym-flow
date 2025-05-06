@@ -61,6 +61,7 @@ export interface Routine {
   equipamiento: string;
   dias: number;
   exercises: {[day: string]: Exercise[]};
+  status?: string;
 }
 
 // User profile interface
@@ -804,8 +805,25 @@ class MySQLConnection {
     this.log(`Routines database configuration updated: ${config.host}:${config.port}`);
   }
   
-  public getRoutinesDbConfig(): RoutinesDbConfig | null {
-    return this.routinesDbConfig;
+  // New method to get routine database configuration from environment
+  public async getRoutinesDbConfig(): Promise<RoutinesDbConfig | null> {
+    try {
+      const env = await envManager.getAll();
+      
+      if (env.ROUTINES_MYSQL_HOST) {
+        return {
+          host: env.ROUTINES_MYSQL_HOST || '',
+          port: parseInt(env.ROUTINES_MYSQL_PORT || '3306'),
+          database: env.ROUTINES_MYSQL_DATABASE || '',
+          user: env.ROUTINES_MYSQL_USER || '',
+          password: env.ROUTINES_MYSQL_PASSWORD || ''
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Error getting routines database config:", error);
+      return null;
+    }
   }
   
   public isRoutinesDbConnected(): boolean {

@@ -127,31 +127,22 @@ export function CreateWeeklyRoutineDialog({
       
       // Construir un objeto con los datos de la rutina
       const routineName = "Mi Rutina Semanal";
-      const weeklyRoutineData = {
+      const routineToSave: Routine = {
+        id: Date.now(), // This generates a numeric timestamp as id
         name: routineName,
-        days: days,
-        dayNames: selectedDays,
-        focusAreas: focusAreas,
+        objetivo: "personalizada",
+        nivel: "personalizada", 
+        equipamiento: "personalizada",
+        dias: days, // days is already a number
         exercises: routineData
       };
       
       // Guardar la rutina en localStorage
-      localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
+      localStorage.setItem('weeklyRoutine', JSON.stringify(routineToSave));
       
       // Si estamos conectados a la base de datos, guardar también en MySQL
       if (databaseConnected) {
         try {
-          const routineToSave: Routine = {
-            id: Date.now(), // This generates a numeric timestamp
-            name: routineName,
-            objetivo: "personalizada",
-            nivel: "personalizada", 
-            equipamiento: "personalizada",
-            dias: days, // days is already a number
-            exercises: routineData,
-            createdAt: new Date().toISOString()
-          };
-          
           // Primero obtenemos las rutinas existentes
           const existingRoutines = await mysqlConnection.getRoutines();
           

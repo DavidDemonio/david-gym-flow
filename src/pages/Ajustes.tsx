@@ -2,14 +2,14 @@
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { DatabaseIcon, MailIcon, UserIcon, Settings, Save } from 'lucide-react';
-import DatabaseSettingsForm from '../components/DatabaseSettingsForm';
-import EmailSettingsForm from '../components/EmailSettingsForm';
-import UserSettingsForm from '../components/UserSettingsForm';
-import EnvEditor from '../components/EnvEditor';
+import { DatabaseIcon, MailIcon, UserIcon, Settings } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { mysqlConnection } from '../utils/mysqlConnection';
+import DatabaseSettingsForm from '../components/DatabaseSettingsForm';
+import { EmailSettingsForm } from '../components/EmailSettingsForm';
+import UserSettingsForm from '../components/UserSettingsForm';
+import EnvEditor from '../components/EnvEditor';
 import RoutinesDatabaseSettings from '../components/RoutinesDatabaseSettings';
 
 const Ajustes = () => {
