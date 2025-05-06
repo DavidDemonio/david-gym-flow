@@ -37,6 +37,36 @@
 
     --radius: 1rem;
   }
+
+  .dark {
+    --background: 20 14 25;
+    --foreground: 210 40% 98%;
+    
+    --card: 229 23% 13%;
+    --card-foreground: 210 40% 98%;
+    
+    --popover: 229 23% 13%;
+    --popover-foreground: 210 40% 98%;
+    
+    --primary: 266 84% 70%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+    
+    --secondary: 217 33% 18%;
+    --secondary-foreground: 210 40% 98%;
+    
+    --muted: 217 33% 18%;
+    --muted-foreground: 215 20.2% 65.1%;
+    
+    --accent: 266 82% 16%;
+    --accent-foreground: 210 40% 98%;
+    
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+    
+    --border: 217 33% 25%;
+    --input: 217 33% 25%;
+    --ring: 224.3 76.5% 48%;
+  }
 }
 
 @layer base {
@@ -45,13 +75,25 @@
   }
   body {
     @apply bg-background text-foreground font-inter antialiased;
+    overscroll-behavior-y: none;
+  }
+  
+  .light body {
     background-image: radial-gradient(
       circle at top right,
       rgba(233, 213, 255, 0.2),
       rgba(244, 243, 255, 0.1)
     );
     background-attachment: fixed;
-    overscroll-behavior-y: none;
+  }
+  
+  .dark body {
+    background-image: radial-gradient(
+      circle at top right,
+      rgba(113, 61, 170, 0.1),
+      rgba(32, 25, 46, 0.05)
+    );
+    background-attachment: fixed;
   }
 }
 
@@ -60,16 +102,32 @@
   transition: transform 0.3s ease, box-shadow 0.3s ease;
 }
 
+.dark .glass-card {
+  @apply bg-gray-900/70 backdrop-blur-md border border-purple-900/20 shadow-lg;
+}
+
 .glass-card:hover {
   box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.1);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.2);
 }
 
 .gradient-btn {
   @apply transition-all duration-300 bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-indigo-600 hover:to-purple-500 text-white font-medium rounded-full shadow-lg hover:shadow-xl;
 }
 
+.dark .gradient-btn {
+  @apply shadow-purple-900/30;
+}
+
 .gradient-text {
   @apply text-transparent bg-clip-text bg-gradient-to-r from-purple-500 to-indigo-600;
+}
+
+.dark .gradient-text {
+  @apply text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-indigo-400;
 }
 
 @keyframes fadeInUp {
@@ -210,4 +268,28 @@
   border-radius: 8px !important;
   padding: 12px !important;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
+}
+
+.dark .recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(30, 30, 46, 0.95) !important;
+  border: 1px solid #2d3748 !important;
+}
+
+/* New styles for dark mode */
+.dark .text-gray-600 {
+  @apply text-gray-400;
+}
+
+.hero-gradient {
+  background-image: linear-gradient(45deg, #a78bfa20, #c4b5fd10);
+}
+
+.dark .hero-gradient {
+  background-image: linear-gradient(45deg, #7c3aed15, #4c1d9520);
+}
+
+/* 3D effect for cards in dark mode */
+.dark .card-3d {
+  box-shadow: 0 6px 12px -2px rgba(0, 0, 0, 0.3),
+              inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
 }

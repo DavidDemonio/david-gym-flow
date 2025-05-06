@@ -25,6 +25,16 @@ const App = () => {
   const [isLoading, setIsLoading] = useState(true);
   
   useEffect(() => {
+    // Inicializar el tema desde localStorage
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    
+    if (savedTheme === 'dark' || (savedTheme === null && prefersDark)) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    
     // Simulate app loading for animation purposes
     const timer = setTimeout(() => {
       setIsLoading(false);
@@ -35,7 +45,7 @@ const App = () => {
   
   if (isLoading) {
     return (
-      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-50">
+      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 dark:bg-gray-900">
         <div className="text-center">
           <div className="text-5xl mb-4 animate-bounce">💪</div>
           <h1 className="text-2xl font-bold gradient-text animate-pulse">David GymFlow</h1>
