@@ -5,8 +5,8 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
 
 ## Requisitos
 
-- Node.js (v14 o superior)
-- npm (v6 o superior)
+- Node.js (v18 o superior recomendado)
+- npm (v8 o superior recomendado)
 - Servidor MySQL
 - Servidor SMTP (para emails)
 
@@ -20,7 +20,7 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
 
 2. Este script te guiará para configurar:
    - Conexión a MySQL
-   - Conexión SMTP para envío de correos
+   - Conexión SMTP para envío de correos (con soporte para SSL/TLS)
    - Tu perfil de usuario
 
 3. Una vez configurado, compila la aplicación:
@@ -37,7 +37,7 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
 
 ## Estructura de la base de datos
 
-El script de configuración crea automáticamente las siguientes tablas:
+El sistema crea automáticamente las siguientes tablas:
 
 - `equipment`: Almacena información sobre el equipamiento de gimnasio
 - `exercises`: Almacena ejercicios personalizados
@@ -60,6 +60,10 @@ Los logs se almacenan en la carpeta `api/logs`:
 - `server.log`: Logs generales del servidor
 
 Si encuentras problemas, revisa estos archivos para obtener más información.
+
+## Nota importante sobre el formato del módulo
+
+La API está configurada para usar ES modules (import/export). Asegúrate de que tu versión de Node.js sea compatible con ES modules (v12+).
 
 ## Configuración manual
 

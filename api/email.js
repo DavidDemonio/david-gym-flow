@@ -1,6 +1,6 @@
 
-const nodemailer = require('nodemailer');
-const { createLogger } = require('./logger');
+import nodemailer from 'nodemailer';
+import { createLogger } from './logger.js';
 
 const logger = createLogger('email');
 
@@ -77,7 +77,4 @@ function createTransporter(config) {
   });
 }
 
-module.exports = {
-  testEmailConnection,
-  sendEmail
-};
+export { testEmailConnection, sendEmail };

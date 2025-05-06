@@ -1,11 +1,16 @@
 
-const express = require('express');
-const bodyParser = require('body-parser');
-const cors = require('cors');
-const path = require('path');
-const mysql = require('./mysql');
-const email = require('./email');
-const { createLogger } = require('./logger');
+import express from 'express';
+import bodyParser from 'body-parser';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import * as mysql from './mysql.js';
+import * as email from './email.js';
+import { createLogger } from './logger.js';
+
+// Get the directory name correctly in ESM
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 const port = process.env.PORT || 3000;
