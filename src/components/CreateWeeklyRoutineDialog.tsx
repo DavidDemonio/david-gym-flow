@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import {
   Dialog,
@@ -15,6 +14,7 @@ import { useToast } from "../hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Check, Database } from "lucide-react";
+import { statsManager } from "../utils/statsManager";
 
 interface CreateWeeklyRoutineDialogProps {
   exercises: DataExercise[];
@@ -115,8 +115,9 @@ export function CreateWeeklyRoutineDialog({
     });
     
     // Construir un objeto con los datos de la rutina
+    const routineName = "Mi Rutina Semanal";
     const weeklyRoutineData = {
-      name: "Mi Rutina Semanal",
+      name: routineName,
       days: days,
       dayNames: selectedDays,
       focusAreas: focusAreas,
@@ -129,20 +130,33 @@ export function CreateWeeklyRoutineDialog({
     // Si estamos conectados a la base de datos, guardar también en MySQL
     if (databaseConnected) {
       try {
-        await mysqlConnection.saveRoutine({
-          name: "Mi Rutina Semanal",
+        const routineToSave = {
+          name: routineName,
           objetivo: "personalizada",
           nivel: "personalizada", 
           equipamiento: "personalizada",
           dias: days,
           exercises: routineData
-        });
+        };
+        
+        // Use the saveRoutine method specifically
+        await mysqlConnection.saveRoutine(routineToSave);
+        
+        // Update statistics - a new routine was created
+        statsManager.addRoutineCompleted();
         
         toast({
           title: "¡Rutina guardada en MySQL!",
           description: `Tu rutina de ${days} días ha sido guardada en la base de datos`,
           action: <Database className="h-4 w-4 text-green-500" />,
         });
+        
+        // Update current routines in localStorage to ensure it appears in Mis Rutinas
+        const existingRoutines = await mysqlConnection.getRoutines();
+        if (existingRoutines.length > 0) {
+          // Store in localStorage for immediate access in MiRutina page
+          localStorage.setItem('app_routines', JSON.stringify(existingRoutines));
+        }
       } catch (err) {
         console.error("Error al guardar rutina en MySQL:", err);
       }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Dumbbell, ArrowRight, CheckCircle, Database, RefreshCw } from 'lucide-react';
@@ -139,7 +138,7 @@ const CrearRutina = () => {
     // Validación básica
     if (!formData.objetivo || !formData.nivel || !formData.equipamiento) {
       toast({
-        variant: "destructive",
+        variant: "destructive", // Changed from "warning" to "destructive"
         title: "Error en el formulario",
         description: "Por favor completa todos los campos",
       });

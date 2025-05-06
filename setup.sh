@@ -101,6 +101,30 @@ if command -v mysql &> /dev/null; then
             fi
         else
             echo -e "${GREEN}Database '$MYSQL_DATABASE' already exists.${NC}"
+            
+            # Drop all tables in the database for a clean install
+            echo -e "${YELLOW}Clearing existing database tables for a clean installation...${NC}"
+            TABLES=$(mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -s -N -e "SHOW TABLES FROM $MYSQL_DATABASE;")
+            
+            if [ -n "$TABLES" ]; then
+                echo -e "${YELLOW}Dropping existing tables...${NC}"
+                
+                # Disable foreign key checks temporarily
+                mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SET FOREIGN_KEY_CHECKS = 0;" $MYSQL_DATABASE
+                
+                # Drop each table
+                for table in $TABLES; do
+                    echo -e "Dropping table: $table"
+                    mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "DROP TABLE IF EXISTS \`$table\`;" $MYSQL_DATABASE
+                done
+                
+                # Re-enable foreign key checks
+                mysql -h "$MYSQL_HOST" -P "$MYSQL_PORT" -u "$MYSQL_USER" -p"$MYSQL_PASSWORD" -e "SET FOREIGN_KEY_CHECKS = 1;" $MYSQL_DATABASE
+                
+                echo -e "${GREEN}All tables dropped successfully.${NC}"
+            else
+                echo -e "${GREEN}No existing tables found. Database is already clean.${NC}"
+            fi
         fi
     else
         echo -e "${YELLOW}Could not connect to MySQL. You may need to create the database manually.${NC}"
@@ -132,6 +156,7 @@ echo "" >> $ENV_FILE
 echo "# App Configuration" >> $ENV_FILE
 echo "APP_NAME=\"GymFlow\"" >> $ENV_FILE
 echo "DEBUG_MODE=\"false\"" >> $ENV_FILE
+echo "INITIALIZED=\"false\"" >> $ENV_FILE
 
 echo -e "${GREEN}Configuration file created successfully.${NC}"
 

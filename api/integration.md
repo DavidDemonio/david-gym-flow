@@ -19,7 +19,7 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
    ```
 
 2. Este script te guiará para configurar:
-   - Conexión a MySQL (intentará crear la base de datos si no existe)
+   - Conexión a MySQL (intentará crear la base de datos si no existe y borrará todas las tablas existentes para una instalación limpia)
    - Conexión SMTP para envío de correos (con soporte para SSL/TLS)
    - Tu perfil de usuario
    - Instalará todas las dependencias necesarias
@@ -51,6 +51,7 @@ El sistema crea automáticamente las siguientes tablas:
 - `exercises`: Almacena ejercicios personalizados
 - `routines`: Almacena rutinas de entrenamiento
 - `user_profiles`: Almacena perfiles de usuario
+- `stats`: Almacena estadísticas de entrenamiento (calorías, tiempo, ejercicios completados)
 
 ## Inicialización de datos
 
@@ -59,6 +60,7 @@ El sistema inicializará automáticamente:
 1. El perfil de usuario configurado durante la instalación
 2. Un conjunto de ejercicios básicos predefinidos
 3. Un conjunto de equipamiento básico predefinido
+4. Estadísticas iniciales en cero para el usuario
 
 Estos datos se cargarán automáticamente la primera vez que se inicie el servidor si las tablas están vacías.
 
@@ -69,6 +71,7 @@ En producción, la aplicación:
 1. Se conecta a la base de datos MySQL configurada
 2. Utiliza nodemailer para enviar correos a través del servidor SMTP configurado
 3. Sirve la aplicación web desde una única instalación
+4. Sincroniza todas las estadísticas con la base de datos en tiempo real
 
 ## Variables de Entorno
 
@@ -94,6 +97,7 @@ SMTP_SECURE_TYPE="TLS"  # o "SSL"
 # App Configuration
 APP_NAME="GymFlow"
 DEBUG_MODE="false"
+INITIALIZED="false"  # Cambia a "true" después de la inicialización
 ```
 
 ## Solución de problemas
@@ -151,3 +155,14 @@ Una vez que la aplicación esté en funcionamiento, puedes acceder a la configur
 1. Menú principal > Ajustes
 2. En la sección "Variables de Entorno (.env)" podrás ver y editar todas las configuraciones
 3. Los cambios realizados en la interfaz web se aplicarán inmediatamente al sistema
+
+## Sincronización de Estadísticas
+
+La aplicación sincroniza automáticamente las siguientes estadísticas con la base de datos:
+
+- Calorías quemadas durante los entrenamientos
+- Tiempo total de entrenamiento
+- Ejercicios completados
+- Rutinas terminadas
+
+Estas estadísticas se muestran en el panel principal y se actualizan en tiempo real.

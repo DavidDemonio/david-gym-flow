@@ -1,5 +1,5 @@
-
 import { DbConfig, EmailConfig, Equipment, Exercise, Routine, UserProfile } from '../utils/mysqlConnection';
+import { UserStats } from '../utils/statsManager';
 
 /**
  * Service class for handling MySQL database operations through API endpoints.
@@ -336,6 +336,83 @@ class MysqlService {
     } catch (err) {
       console.error('Error getting user profile:', err);
       return null;
+    }
+  }
+
+  /**
+   * Saves user statistics to the database
+   */
+  public static async saveUserStats(config: DbConfig, stats: UserStats): Promise<boolean> {
+    try {
+      const response = await fetch('/api/mysql/save-user-stats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config,
+          stats
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.success;
+    } catch (err) {
+      console.error('Error saving user stats:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Gets user statistics from the database
+   */
+  public static async getUserStats(config: DbConfig, email: string): Promise<UserStats | null> {
+    try {
+      const response = await fetch('/api/mysql/get-user-stats', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config,
+          email
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.success && result.data ? result.data : null;
+    } catch (err) {
+      console.error('Error getting user stats:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Gets environment variables from the server
+   */
+  public static async getEnvironmentVariables(): Promise<Record<string, string>> {
+    try {
+      const response = await fetch('/api/env', {
+        method: 'GET',
+      });
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const result = await response.json();
+      return result.env || {};
+    } catch (err) {
+      console.error('Error getting environment variables:', err);
+      return {};
     }
   }
 }
