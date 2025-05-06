@@ -1,8 +1,7 @@
-
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
-import { Activity, Calendar, Clock, Flame, BarChart2, TrendingUp, History } from 'lucide-react';
+import { Activity, Calendar, Clock, Flame, BarChart2, TrendingUp, History, Dumbbell } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import {
   CartesianGrid,

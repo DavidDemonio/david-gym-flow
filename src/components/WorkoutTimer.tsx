@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Play, Pause, RotateCcw, CheckCircle2, Clock, BarChart3, Flame } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -92,6 +91,7 @@ const WorkoutTimer: React.FC<WorkoutTimerProps> = ({ exercises, onComplete, onCa
     }
   };
 
+  // Complete workout function
   const completeWorkout = () => {
     const stats: WorkoutStats = {
       duration: elapsedTime,
@@ -104,7 +104,7 @@ const WorkoutTimer: React.FC<WorkoutTimerProps> = ({ exercises, onComplete, onCa
     toast({
       title: "Entrenamiento completado",
       description: `Has quemado ${caloriesBurned.toFixed(0)} calorías en ${formatTime(elapsedTime)}`,
-      variant: "success",
+      variant: "default",
     });
     
     onComplete(stats);

@@ -1,6 +1,6 @@
 
 import { useState } from 'react';
-import { Settings, Database, Plus, Dumbbell, Save } from 'lucide-react';
+import { Settings, Database, Plus, Dumbbell, Save, Activity } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { 
   Card, 
