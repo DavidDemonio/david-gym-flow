@@ -65,7 +65,7 @@ const CrearRutina = () => {
         console.log("Ejercicios cargados desde MySQL:", exercises.length);
       } else {
         toast({
-          variant: "warning",
+          variant: "default",
           title: "No hay ejercicios",
           description: "No se encontraron ejercicios en la base de datos",
         });

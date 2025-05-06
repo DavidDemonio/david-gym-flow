@@ -24,6 +24,9 @@ export interface EnvVariables {
   // Application settings
   APP_NAME?: string;
   DEBUG_MODE?: string;
+  
+  // Add index signature to make it compatible with Record<string, string>
+  [key: string]: string | undefined;
 }
 
 class EnvManager {
