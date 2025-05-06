@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell, Info, Plus } from 'lucide-react';
@@ -10,22 +11,22 @@ const mockExercises = {
     principiante: {
       casa: [
         {day: 'Día 1', focus: 'Tren Superior', exercises: [
-          {name: 'Flexiones', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Mantén el core activo'},
-          {name: 'Fondos en silla', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Hombros alejados de las orejas'},
-          {name: 'Remo con toalla', sets: 3, reps: '10-12', rest: '60 seg', tips: 'Contrae la espalda'},
-          {name: 'Extensiones de tríceps', sets: 3, reps: '12-15', rest: '60 seg', tips: 'Codos cerca de la cabeza'}
+          {name: 'Flexiones', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Mantén el core activo', calories: 8},
+          {name: 'Fondos en silla', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Hombros alejados de las orejas', calories: 7},
+          {name: 'Remo con toalla', sets: 3, reps: '10-12', rest: '60 seg', tips: 'Contrae la espalda', calories: 6},
+          {name: 'Extensiones de tríceps', sets: 3, reps: '12-15', rest: '60 seg', tips: 'Codos cerca de la cabeza', calories: 5}
         ]},
         {day: 'Día 2', focus: 'Tren Inferior', exercises: [
-          {name: 'Sentadillas', sets: 3, reps: '12-15', rest: '90 seg', tips: 'Rodillas en línea con los pies'},
-          {name: 'Estocadas', sets: 3, reps: '10 por pierna', rest: '60 seg', tips: 'Mantén la espalda recta'},
-          {name: 'Puente de glúteos', sets: 3, reps: '15-20', rest: '60 seg', tips: 'Aprieta los glúteos al subir'},
-          {name: 'Elevaciones de pantorrilla', sets: 3, reps: '20-25', rest: '30 seg', tips: 'Extiende completamente'}
+          {name: 'Sentadillas', sets: 3, reps: '12-15', rest: '90 seg', tips: 'Rodillas en línea con los pies', calories: 10},
+          {name: 'Estocadas', sets: 3, reps: '10 por pierna', rest: '60 seg', tips: 'Mantén la espalda recta', calories: 9},
+          {name: 'Puente de glúteos', sets: 3, reps: '15-20', rest: '60 seg', tips: 'Aprieta los glúteos al subir', calories: 7},
+          {name: 'Elevaciones de pantorrilla', sets: 3, reps: '20-25', rest: '30 seg', tips: 'Extiende completamente', calories: 5}
         ]},
         {day: 'Día 3', focus: 'Full Body', exercises: [
-          {name: 'Burpees', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Mantén un ritmo constante'},
-          {name: 'Mountain Climbers', sets: 3, reps: '20 por pierna', rest: '60 seg', tips: 'Core estable'},
-          {name: 'Superman', sets: 3, reps: '12-15', rest: '60 seg', tips: 'Eleva brazos y piernas'},
-          {name: 'Plancha', sets: 3, reps: '30-45 seg', rest: '60 seg', tips: 'Alineación desde cabeza a talones'}
+          {name: 'Burpees', sets: 3, reps: '8-10', rest: '90 seg', tips: 'Mantén un ritmo constante', calories: 12},
+          {name: 'Mountain Climbers', sets: 3, reps: '20 por pierna', rest: '60 seg', tips: 'Core estable', calories: 9},
+          {name: 'Superman', sets: 3, reps: '12-15', rest: '60 seg', tips: 'Eleva brazos y piernas', calories: 6},
+          {name: 'Plancha', sets: 3, reps: '30-45 seg', rest: '60 seg', tips: 'Alineación desde cabeza a talones', calories: 7}
         ]}
       ]
     },
@@ -71,6 +72,7 @@ const MiRutina = () => {
   const { toast } = useToast();
   const [activeDay, setActiveDay] = useState(0);
   const [weeklyRoutine, setWeeklyRoutine] = useState<WeeklyRoutine | null>(null);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   
   // Intentar obtener datos del formulario o usar valores por defecto
   const formData = location.state?.formData || {
@@ -111,6 +113,41 @@ const MiRutina = () => {
     navigate('/maquinas-ejercicios');
   };
   
+  const toggleAnalytics = () => {
+    setShowAnalytics(!showAnalytics);
+  };
+  
+  // Calcular calorías totales quemadas por día
+  const calculateDailyCalories = (dayIndex) => {
+    if (weeklyRoutine) {
+      const dayName = weeklyRoutine.dayNames[dayIndex];
+      const exercises = weeklyRoutine.exercises[dayName] || [];
+      return exercises.reduce((total, ex) => total + (ex.calories || 0) * ex.sets, 0);
+    }
+    
+    if (rutina[dayIndex]) {
+      return rutina[dayIndex].exercises.reduce((total, ex) => total + (ex.calories || 0) * ex.sets, 0);
+    }
+    
+    return 0;
+  };
+  
+  const calculateWeeklyCalories = () => {
+    let total = 0;
+    
+    if (weeklyRoutine) {
+      weeklyRoutine.dayNames.forEach((dayName, index) => {
+        total += calculateDailyCalories(index);
+      });
+    } else {
+      rutina.forEach((_, index) => {
+        total += calculateDailyCalories(index);
+      });
+    }
+    
+    return total;
+  };
+  
   // Si hay una rutina semanal, mostrarla
   if (weeklyRoutine) {
     return (
@@ -123,16 +160,24 @@ const MiRutina = () => {
           
           <div className="flex gap-3">
             <Button 
+              onClick={toggleAnalytics}
+              variant={showAnalytics ? "default" : "outline"}
+              className="px-4 py-2 flex items-center text-sm animate-fade-in"
+            >
+              <BarChart3 className="mr-2 h-4 w-4" />
+              {showAnalytics ? 'Ocultar Analytics' : 'Ver Analytics'}
+            </Button>
+            <Button 
               onClick={handleExploreExercises}
               variant="outline"
-              className="px-4 py-2 flex items-center text-sm"
+              className="px-4 py-2 flex items-center text-sm animate-fade-in animate-delay-100"
             >
               <Plus className="mr-2 h-4 w-4" />
               Explorar Ejercicios
             </Button>
             <button 
               onClick={handleDownload}
-              className="gradient-btn px-4 py-2 flex items-center text-sm"
+              className="gradient-btn px-4 py-2 flex items-center text-sm animate-fade-in animate-delay-200"
             >
               <Download className="mr-2 h-4 w-4" />
               Descargar PDF
@@ -140,22 +185,35 @@ const MiRutina = () => {
           </div>
         </div>
         
+        {showAnalytics && (
+          <ExerciseAnalytics 
+            weeklyCalories={calculateWeeklyCalories()}
+            dailyCalories={weeklyRoutine.dayNames.map((_, index) => calculateDailyCalories(index))}
+            dayNames={weeklyRoutine.dayNames}
+          />
+        )}
+        
         {/* Pestañas de días */}
         <div className="mb-6 overflow-x-auto">
           <div className="flex space-x-2 min-w-max">
             {weeklyRoutine.dayNames.map((day, index) => (
               <button
                 key={index}
-                className={`px-4 py-2 rounded-full transition-all whitespace-nowrap flex items-center gap-1 ${
+                className={`px-4 py-2 rounded-full transition-all whitespace-nowrap flex items-center gap-1 animate-fade-in ${
                   activeDay === index 
                     ? 'bg-purple-600 text-white' 
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                }`}
+                } hover:scale-105`}
+                style={{animationDelay: `${index * 75}ms`}}
                 onClick={() => setActiveDay(index)}
               >
                 {day}
                 <span className="text-xs ml-1">
                   {weeklyRoutine.focusAreas[(index + 1).toString()]}
+                </span>
+                <span className="ml-1 text-xs flex items-center" title="Calorías">
+                  <Clock className="h-3 w-3 mr-1" />
+                  {calculateDailyCalories(index)}
                 </span>
               </button>
             ))}
@@ -167,34 +225,48 @@ const MiRutina = () => {
           <div className="glass-card rounded-xl p-6 animate-fadeInUp">
             <div className="mb-6">
               <h2 className="text-2xl font-bold mb-1">{weeklyRoutine.dayNames[activeDay]}</h2>
-              <p className="text-purple-600 font-medium">
-                {weeklyRoutine.focusAreas[(activeDay + 1).toString()]}
-              </p>
+              <div className="flex justify-between items-center">
+                <p className="text-purple-600 font-medium">
+                  {weeklyRoutine.focusAreas[(activeDay + 1).toString()]}
+                </p>
+                <div className="flex items-center text-green-600 font-medium">
+                  <Activity className="h-4 w-4 mr-1" />
+                  {calculateDailyCalories(activeDay)} calorías
+                </div>
+              </div>
             </div>
             
             <div className="space-y-6">
               {weeklyRoutine.exercises[weeklyRoutine.dayNames[activeDay]]?.map((exercise, index) => (
                 <div 
                   key={index}
-                  className="border border-gray-100 rounded-lg p-4 bg-white hover:border-purple-200 transition-all"
+                  className="border border-gray-100 rounded-lg p-4 bg-white hover:border-purple-200 transition-all hover:shadow-md transform hover:-translate-y-1"
+                  style={{animationDelay: `${index * 150}ms`}}
                 >
                   <div className="flex items-center mb-2">
                     <span className="text-2xl mr-2">{exercise.emoji}</span>
                     <h3 className="font-semibold text-lg">{exercise.name}</h3>
                   </div>
                   
-                  <div className="grid grid-cols-3 gap-4 mb-3">
+                  <div className="grid grid-cols-4 gap-4 mb-3">
                     <div>
                       <p className="text-xs text-gray-500">Series</p>
-                      <p className="font-medium">3</p>
+                      <p className="font-medium">{exercise.sets || 3}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Repeticiones</p>
-                      <p className="font-medium">12-15</p>
+                      <p className="font-medium">{exercise.reps || "12-15"}</p>
                     </div>
                     <div>
                       <p className="text-xs text-gray-500">Descanso</p>
-                      <p className="font-medium">60 seg</p>
+                      <p className="font-medium">{exercise.rest || "60 seg"}</p>
+                    </div>
+                    <div className="text-green-600">
+                      <p className="text-xs text-gray-500">Calorías por rep.</p>
+                      <p className="font-medium flex items-center">
+                        <Activity className="h-3 w-3 mr-1" />
+                        {exercise.calories || 5} kcal
+                      </p>
                     </div>
                   </div>
                   
@@ -211,7 +283,7 @@ const MiRutina = () => {
                   <p className="text-gray-500 mb-4">No hay ejercicios asignados para este día</p>
                   <Button 
                     onClick={handleExploreExercises}
-                    className="gradient-btn"
+                    className="gradient-btn hover:scale-105 transition-transform"
                   >
                     <Plus className="mr-2 h-4 w-4" />
                     Añadir ejercicios
@@ -230,7 +302,7 @@ const MiRutina = () => {
   if (rutina.length === 0) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">
-        <div className="glass-card rounded-xl p-8 max-w-2xl mx-auto">
+        <div className="glass-card rounded-xl p-8 max-w-2xl mx-auto animate-fadeInUp">
           <h1 className="text-2xl font-bold mb-4">No hay rutina disponible</h1>
           <p className="text-gray-600 mb-6">
             No se encontró una rutina para la combinación seleccionada. Por favor, crea una nueva rutina.
@@ -238,7 +310,7 @@ const MiRutina = () => {
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <a 
               href="/crear-rutina" 
-              className="gradient-btn px-6 py-2 inline-flex items-center"
+              className="gradient-btn px-6 py-2 inline-flex items-center hover:scale-105 transition-transform"
             >
               Crear Nueva Rutina
               <Dumbbell className="ml-2 h-5 w-5" />
@@ -246,7 +318,7 @@ const MiRutina = () => {
             <Button
               onClick={handleExploreExercises}
               variant="outline"
-              className="px-6 py-2 inline-flex items-center"
+              className="px-6 py-2 inline-flex items-center hover:scale-105 transition-transform"
             >
               Explorar Ejercicios
               <Plus className="ml-2 h-5 w-5" />
@@ -267,16 +339,24 @@ const MiRutina = () => {
         
         <div className="flex gap-3">
           <Button 
+            onClick={toggleAnalytics}
+            variant={showAnalytics ? "default" : "outline"}
+            className="px-4 py-2 flex items-center text-sm animate-fade-in"
+          >
+            <BarChart3 className="mr-2 h-4 w-4" />
+            {showAnalytics ? 'Ocultar Analytics' : 'Ver Analytics'}
+          </Button>
+          <Button 
             onClick={handleExploreExercises}
             variant="outline"
-            className="px-4 py-2 flex items-center text-sm"
+            className="px-4 py-2 flex items-center text-sm animate-fade-in animate-delay-100"
           >
             <Plus className="mr-2 h-4 w-4" />
             Explorar Ejercicios
           </Button>
           <button 
             onClick={handleDownload}
-            className="gradient-btn px-4 py-2 flex items-center text-sm"
+            className="gradient-btn px-4 py-2 flex items-center text-sm animate-fade-in animate-delay-200"
           >
             <Download className="mr-2 h-4 w-4" />
             Descargar PDF
@@ -284,12 +364,20 @@ const MiRutina = () => {
         </div>
       </div>
       
+      {showAnalytics && (
+        <ExerciseAnalytics 
+          weeklyCalories={calculateWeeklyCalories()}
+          dailyCalories={rutina.map((_, index) => calculateDailyCalories(index))}
+          dayNames={rutina.map(day => day.day)}
+        />
+      )}
+      
       {/* Resumen de la rutina */}
       <div className="glass-card rounded-xl p-6 mb-8 animate-fadeInUp">
         <h2 className="text-xl font-semibold mb-4">Resumen de tu rutina</h2>
         
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="bg-purple-50 p-4 rounded-lg border border-purple-100">
+          <div className="bg-purple-50 p-4 rounded-lg border border-purple-100 hover:shadow-md transition-all hover:-translate-y-1">
             <div className="flex items-center mb-2">
               <BarChart3 className="text-purple-600 h-5 w-5 mr-2" />
               <h3 className="font-medium">Objetivo</h3>
@@ -297,7 +385,7 @@ const MiRutina = () => {
             <p className="text-gray-700 capitalize">{formData.objetivo}</p>
           </div>
           
-          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100">
+          <div className="bg-blue-50 p-4 rounded-lg border border-blue-100 hover:shadow-md transition-all hover:-translate-y-1">
             <div className="flex items-center mb-2">
               <Activity className="text-blue-600 h-5 w-5 mr-2" />
               <h3 className="font-medium">Nivel</h3>
@@ -305,7 +393,7 @@ const MiRutina = () => {
             <p className="text-gray-700 capitalize">{formData.nivel}</p>
           </div>
           
-          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100">
+          <div className="bg-indigo-50 p-4 rounded-lg border border-indigo-100 hover:shadow-md transition-all hover:-translate-y-1">
             <div className="flex items-center mb-2">
               <Calendar className="text-indigo-600 h-5 w-5 mr-2" />
               <h3 className="font-medium">Frecuencia</h3>
@@ -313,7 +401,7 @@ const MiRutina = () => {
             <p className="text-gray-700">{formData.dias} días/semana</p>
           </div>
           
-          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100">
+          <div className="bg-pink-50 p-4 rounded-lg border border-pink-100 hover:shadow-md transition-all hover:-translate-y-1">
             <div className="flex items-center mb-2">
               <Dumbbell className="text-pink-600 h-5 w-5 mr-2" />
               <h3 className="font-medium">Equipo</h3>
@@ -329,14 +417,19 @@ const MiRutina = () => {
           {rutina.map((day, index) => (
             <button
               key={index}
-              className={`px-4 py-2 rounded-full transition-all whitespace-nowrap ${
+              className={`px-4 py-2 rounded-full transition-all whitespace-nowrap hover:scale-105 animate-fade-in ${
                 activeDay === index 
                   ? 'bg-purple-600 text-white' 
                   : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
               }`}
+              style={{animationDelay: `${index * 75}ms`}}
               onClick={() => setActiveDay(index)}
             >
               {day.day} - {day.focus}
+              <span className="ml-2 text-xs flex items-center">
+                <Activity className="h-3 w-3 mr-1" />
+                {calculateDailyCalories(index)}
+              </span>
             </button>
           ))}
         </div>
@@ -347,18 +440,25 @@ const MiRutina = () => {
         <div className="glass-card rounded-xl p-6 animate-fadeInUp">
           <div className="mb-6">
             <h2 className="text-2xl font-bold mb-1">{rutina[activeDay].day}</h2>
-            <p className="text-purple-600 font-medium">{rutina[activeDay].focus}</p>
+            <div className="flex justify-between items-center">
+              <p className="text-purple-600 font-medium">{rutina[activeDay].focus}</p>
+              <div className="flex items-center text-green-600 font-medium">
+                <Activity className="h-4 w-4 mr-1" />
+                {calculateDailyCalories(activeDay)} calorías
+              </div>
+            </div>
           </div>
           
           <div className="space-y-6">
             {rutina[activeDay].exercises.map((exercise, index) => (
               <div 
                 key={index}
-                className="border border-gray-100 rounded-lg p-4 bg-white hover:border-purple-200 transition-all"
+                className="border border-gray-100 rounded-lg p-4 bg-white hover:border-purple-200 transition-all hover:shadow-md transform hover:-translate-y-1"
+                style={{animationDelay: `${index * 150}ms`}}
               >
                 <h3 className="font-semibold text-lg mb-2">{exercise.name}</h3>
                 
-                <div className="grid grid-cols-3 gap-4 mb-3">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
                   <div>
                     <p className="text-xs text-gray-500">Series</p>
                     <p className="font-medium">{exercise.sets}</p>
@@ -370,6 +470,13 @@ const MiRutina = () => {
                   <div>
                     <p className="text-xs text-gray-500">Descanso</p>
                     <p className="font-medium">{exercise.rest}</p>
+                  </div>
+                  <div className="text-green-600">
+                    <p className="text-xs text-gray-500">Calorías por rep.</p>
+                    <p className="font-medium flex items-center">
+                      <Activity className="h-3 w-3 mr-1" />
+                      {exercise.calories || 5} kcal
+                    </p>
                   </div>
                 </div>
                 
@@ -385,8 +492,5 @@ const MiRutina = () => {
     </div>
   );
 };
-
-// Importar el icono Info
-import { Info } from 'lucide-react';
 
 export default MiRutina;

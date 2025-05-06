@@ -51,11 +51,17 @@
       rgba(244, 243, 255, 0.1)
     );
     background-attachment: fixed;
+    overscroll-behavior-y: none;
   }
 }
 
 .glass-card {
   @apply bg-white/80 backdrop-blur-sm border border-white/20 shadow-lg;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.glass-card:hover {
+  box-shadow: 0 10px 25px -5px rgba(139, 92, 246, 0.1);
 }
 
 .gradient-btn {
@@ -95,4 +101,113 @@
 
 .card-hover {
   @apply transition-all hover:-translate-y-1 hover:shadow-lg duration-300;
+}
+
+/* New animations */
+@keyframes scale-in {
+  0% {
+    transform: scale(0.8);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out forwards;
+}
+
+@keyframes slide-in-right {
+  0% {
+    transform: translateX(20px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+.animate-slide-in-right {
+  animation: slide-in-right 0.3s ease-out forwards;
+}
+
+@keyframes pulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.animate-pulse-subtle {
+  animation: pulse 2s infinite ease-in-out;
+}
+
+/* Mobile optimizations */
+.mobile-optimized .glass-card {
+  @apply mx-0 px-4 py-5 rounded-lg;
+}
+
+@media (max-width: 640px) {
+  .mobile-optimized h1 {
+    @apply text-2xl;
+  }
+  
+  .mobile-optimized h2 {
+    @apply text-xl;
+  }
+  
+  .mobile-optimized .glass-card {
+    @apply rounded-xl shadow-md;
+    margin-left: -1rem;
+    margin-right: -1rem;
+    width: calc(100% + 2rem);
+  }
+  
+  .mobile-optimized .container {
+    @apply px-4;
+  }
+  
+  /* Add a smooth scrolling effect for mobile */
+  .mobile-optimized {
+    scroll-behavior: smooth;
+  }
+  
+  /* Add overscroll effects */
+  .mobile-optimized .overflow-y-auto,
+  .mobile-optimized .overflow-x-auto {
+    -webkit-overflow-scrolling: touch;
+  }
+  
+  /* Optimize touch targets for mobile */
+  .mobile-optimized button, 
+  .mobile-optimized a,
+  .mobile-optimized [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+}
+
+/* Customize chart elements */
+.recharts-cartesian-axis-tick-value {
+  font-size: 12px;
+}
+
+.recharts-legend-item-text {
+  font-size: 12px;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background-color: rgba(255, 255, 255, 0.95) !important;
+  border: 1px solid #e2e8f0 !important;
+  border-radius: 8px !important;
+  padding: 12px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05) !important;
 }

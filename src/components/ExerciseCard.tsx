@@ -2,6 +2,7 @@
 import { Exercise } from "../data/equipmentData";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from "@/components/ui/card";
+import { Activity } from "lucide-react";
 
 interface ExerciseCardProps {
   exercise: Exercise;
@@ -17,13 +18,13 @@ const difficultyColors = {
 const ExerciseCard = ({ exercise, onClick }: ExerciseCardProps) => {
   return (
     <Card 
-      className="h-full card-hover cursor-pointer border border-indigo-100 hover:border-indigo-300"
+      className="h-full card-hover cursor-pointer border border-indigo-100 hover:border-indigo-300 transform transition-all hover:-translate-y-1 hover:shadow-lg"
       onClick={onClick}
     >
       <CardHeader className="pb-3">
         <div className="flex justify-between items-center">
           <CardTitle className="text-lg flex items-center">
-            <span className="text-2xl mr-2">{exercise.emoji}</span> 
+            <span className="text-2xl mr-2 animate-scale-in">{exercise.emoji}</span> 
             {exercise.name}
           </CardTitle>
           <Badge 
@@ -45,12 +46,19 @@ const ExerciseCard = ({ exercise, onClick }: ExerciseCardProps) => {
             </Badge>
           ))}
         </div>
-        <Badge className={exercise.requiresGym 
-          ? "bg-purple-50 text-purple-700 border-purple-200" 
-          : "bg-green-50 text-green-700 border-green-200"
-        }>
-          {exercise.requiresGym ? "🏋️ Requiere gimnasio" : "🏠 Se puede hacer en casa"}
-        </Badge>
+        <div className="flex justify-between items-center">
+          <Badge className={exercise.requiresGym 
+            ? "bg-purple-50 text-purple-700 border-purple-200" 
+            : "bg-green-50 text-green-700 border-green-200"
+          }>
+            {exercise.requiresGym ? "🏋️ Requiere gimnasio" : "🏠 Se puede hacer en casa"}
+          </Badge>
+          
+          <div className="text-sm text-green-600 flex items-center">
+            <Activity className="h-4 w-4 mr-1" />
+            <span>{exercise.caloriesPerRep || "5-8"} kcal/rep</span>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

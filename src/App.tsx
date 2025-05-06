@@ -4,6 +4,8 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { useEffect, useState } from "react";
+import { useIsMobile } from "./hooks/use-mobile";
 
 // Page Imports
 import Home from "./pages/Home";
@@ -18,28 +20,53 @@ import NavBar from "./components/NavBar";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <div className="min-h-screen flex flex-col">
-          <NavBar />
-          <div className="flex-1">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/crear-rutina" element={<CrearRutina />} />
-              <Route path="/calculadora-imc" element={<CalculadoraIMC />} />
-              <Route path="/mi-rutina" element={<MiRutina />} />
-              <Route path="/maquinas-ejercicios" element={<MaquinasEjercicios />} />
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </div>
+const App = () => {
+  const isMobile = useIsMobile();
+  const [isLoading, setIsLoading] = useState(true);
+  
+  useEffect(() => {
+    // Simulate app loading for animation purposes
+    const timer = setTimeout(() => {
+      setIsLoading(false);
+    }, 800);
+    
+    return () => clearTimeout(timer);
+  }, []);
+  
+  if (isLoading) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center bg-gradient-to-br from-purple-50 to-indigo-50">
+        <div className="text-center">
+          <div className="text-5xl mb-4 animate-bounce">💪</div>
+          <h1 className="text-2xl font-bold gradient-text animate-pulse">David GymFlow</h1>
         </div>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+      </div>
+    );
+  }
+  
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <div className={`min-h-screen flex flex-col ${isMobile ? 'mobile-optimized' : ''}`}>
+            <NavBar />
+            <div className="flex-1 animate-fade-in">
+              <Routes>
+                <Route path="/" element={<Home />} />
+                <Route path="/crear-rutina" element={<CrearRutina />} />
+                <Route path="/calculadora-imc" element={<CalculadoraIMC />} />
+                <Route path="/mi-rutina" element={<MiRutina />} />
+                <Route path="/maquinas-ejercicios" element={<MaquinasEjercicios />} />
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </div>
+          </div>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
