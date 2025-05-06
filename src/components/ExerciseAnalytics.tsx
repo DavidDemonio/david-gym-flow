@@ -70,6 +70,124 @@ const ExerciseAnalytics = ({ weeklyCalories, dailyCalories, dayNames }: Exercise
               Circular
             </TabsTrigger>
           </TabsList>
+        
+          {/* Move TabsContent components inside the Tabs component */}
+          <div className="h-[300px] md:h-[400px] mt-6">
+            <TabsContent value="bar" className="mt-0 h-full">
+              <ChartContainer 
+                config={{
+                  calories: {
+                    theme: {
+                      light: '#8B5CF6',
+                      dark: '#A78BFA'
+                    }
+                  }
+                }}
+                className="h-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart
+                    data={dailyData}
+                    margin={{
+                      top: 20,
+                      right: isMobile ? 0 : 30,
+                      left: isMobile ? 0 : 20,
+                      bottom: 5,
+                    }}
+                    barSize={isMobile ? 15 : 30}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="name" scale="point" padding={{ left: 10, right: 10 }} />
+                    <YAxis
+                      label={{ value: 'Calorías', angle: -90, position: 'insideLeft', dx: -20 }}
+                      width={40}
+                    />
+                    <Tooltip
+                      content={<ChartTooltipContent />}
+                    />
+                    <Legend />
+                    <Bar 
+                      dataKey="calories" 
+                      name="Calorías"
+                      fill="var(--color-calories)" 
+                      radius={[4, 4, 0, 0]}
+                      className="animate-fade-in"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </TabsContent>
+            
+            <TabsContent value="line" className="mt-0 h-full">
+              <ChartContainer
+                config={{
+                  calories: {
+                    theme: {
+                      light: '#8B5CF6',
+                      dark: '#A78BFA'
+                    }
+                  }
+                }}
+                className="h-full"
+              >
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart
+                    data={dailyData}
+                    margin={{
+                      top: 20,
+                      right: isMobile ? 0 : 30,
+                      left: isMobile ? 0 : 20,
+                      bottom: 5,
+                    }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
+                    <XAxis dataKey="name" />
+                    <YAxis
+                      label={{ value: 'Calorías', angle: -90, position: 'insideLeft', dx: -20 }}
+                      width={40}
+                    />
+                    <Tooltip
+                      content={<ChartTooltipContent />}
+                    />
+                    <Legend />
+                    <Line 
+                      type="monotone" 
+                      dataKey="calories" 
+                      name="Calorías"
+                      stroke="var(--color-calories)" 
+                      activeDot={{ r: 8 }}
+                      strokeWidth={2}
+                      className="animate-fade-in"
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </TabsContent>
+            
+            <TabsContent value="pie" className="mt-0 h-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={weeklyDistribution}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={isMobile ? 80 : 120}
+                    fill="#8884d8"
+                    dataKey="value"
+                    className="animate-fade-in"
+                  >
+                    {weeklyDistribution.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value) => [`${value} kcal`, "Calorías"]} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </TabsContent>
+          </div>
         </Tabs>
       </div>
       
@@ -126,123 +244,6 @@ const ExerciseAnalytics = ({ weeklyCalories, dailyCalories, dayNames }: Exercise
             <CardDescription>mayor quema</CardDescription>
           </CardContent>
         </Card>
-      </div>
-      
-      <div className="h-[300px] md:h-[400px]">
-        <TabsContent value="bar" className="mt-0 h-full">
-          <ChartContainer 
-            config={{
-              calories: {
-                theme: {
-                  light: '#8B5CF6',
-                  dark: '#A78BFA'
-                }
-              }
-            }}
-            className="h-full"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart
-                data={dailyData}
-                margin={{
-                  top: 20,
-                  right: isMobile ? 0 : 30,
-                  left: isMobile ? 0 : 20,
-                  bottom: 5,
-                }}
-                barSize={isMobile ? 15 : 30}
-              >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis dataKey="name" scale="point" padding={{ left: 10, right: 10 }} />
-                <YAxis
-                  label={{ value: 'Calorías', angle: -90, position: 'insideLeft', dx: -20 }}
-                  width={40}
-                />
-                <Tooltip
-                  content={<ChartTooltipContent />}
-                />
-                <Legend />
-                <Bar 
-                  dataKey="calories" 
-                  name="Calorías"
-                  fill="var(--color-calories)" 
-                  radius={[4, 4, 0, 0]}
-                  className="animate-fade-in"
-                />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </TabsContent>
-        
-        <TabsContent value="line" className="mt-0 h-full">
-          <ChartContainer
-            config={{
-              calories: {
-                theme: {
-                  light: '#8B5CF6',
-                  dark: '#A78BFA'
-                }
-              }
-            }}
-            className="h-full"
-          >
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart
-                data={dailyData}
-                margin={{
-                  top: 20,
-                  right: isMobile ? 0 : 30,
-                  left: isMobile ? 0 : 20,
-                  bottom: 5,
-                }}
-              >
-                <CartesianGrid strokeDasharray="3 3" opacity={0.1} />
-                <XAxis dataKey="name" />
-                <YAxis
-                  label={{ value: 'Calorías', angle: -90, position: 'insideLeft', dx: -20 }}
-                  width={40}
-                />
-                <Tooltip
-                  content={<ChartTooltipContent />}
-                />
-                <Legend />
-                <Line 
-                  type="monotone" 
-                  dataKey="calories" 
-                  name="Calorías"
-                  stroke="var(--color-calories)" 
-                  activeDot={{ r: 8 }}
-                  strokeWidth={2}
-                  className="animate-fade-in"
-                />
-              </LineChart>
-            </ResponsiveContainer>
-          </ChartContainer>
-        </TabsContent>
-        
-        <TabsContent value="pie" className="mt-0 h-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <PieChart>
-              <Pie
-                data={weeklyDistribution}
-                cx="50%"
-                cy="50%"
-                labelLine={false}
-                label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                outerRadius={isMobile ? 80 : 120}
-                fill="#8884d8"
-                dataKey="value"
-                className="animate-fade-in"
-              >
-                {weeklyDistribution.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} />
-                ))}
-              </Pie>
-              <Tooltip formatter={(value) => [`${value} kcal`, "Calorías"]} />
-              <Legend />
-            </PieChart>
-          </ResponsiveContainer>
-        </TabsContent>
       </div>
       
       <div className="mt-4 text-sm text-gray-600 text-center">
