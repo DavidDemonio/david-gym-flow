@@ -5,8 +5,8 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
 
 ## Requisitos
 
-- Node.js (v18 o superior recomendado)
-- npm (v8 o superior recomendado)
+- Node.js (v14 o superior recomendado)
+- npm (v7 o superior recomendado)
 - Servidor MySQL
 - Servidor SMTP (para emails)
 
@@ -22,18 +22,15 @@ Este documento explica cómo integrar GymFlow con servidores MySQL y SMTP para p
    - Conexión a MySQL
    - Conexión SMTP para envío de correos (con soporte para SSL/TLS)
    - Tu perfil de usuario
+   - Instalará todas las dependencias necesarias
+   - Construirá la aplicación frontend
 
-3. Una vez configurado, compila la aplicación:
-   ```bash
-   npm run build
-   ```
-
-4. Inicia el servidor:
+3. Una vez configurado, inicia el servidor:
    ```bash
    node api/server.js
    ```
 
-5. La aplicación estará disponible en: http://localhost:3000
+4. La aplicación estará disponible en: http://localhost:3000
 
 ## Estructura de la base de datos
 
@@ -52,22 +49,9 @@ En producción, la aplicación:
 2. Utiliza nodemailer para enviar correos a través del servidor SMTP configurado
 3. Sirve la aplicación web desde una única instalación
 
-## Solución de problemas
+## Variables de Entorno
 
-Los logs se almacenan en la carpeta `api/logs`:
-- `mysql.log`: Logs de conexión a la base de datos
-- `email.log`: Logs de envío de correos
-- `server.log`: Logs generales del servidor
-
-Si encuentras problemas, revisa estos archivos para obtener más información.
-
-## Nota importante sobre el formato del módulo
-
-La API está configurada para usar ES modules (import/export). Asegúrate de que tu versión de Node.js sea compatible con ES modules (v12+).
-
-## Configuración manual
-
-Si prefieres configurar manualmente, puedes crear un archivo `.env` en la raíz del proyecto con las siguientes variables:
+La aplicación utiliza un archivo `.env` para la configuración. Las variables más importantes son:
 
 ```
 # MySQL Configuration
@@ -90,3 +74,51 @@ SMTP_SECURE_TYPE="TLS"  # o "SSL"
 APP_NAME="GymFlow"
 DEBUG_MODE="false"
 ```
+
+## Solución de problemas
+
+Los logs se almacenan en la carpeta `api/logs`:
+- `mysql.log`: Logs de conexión a la base de datos
+- `email.log`: Logs de envío de correos
+- `server.log`: Logs generales del servidor
+
+Si encuentras problemas, revisa estos archivos para obtener más información.
+
+## Ejecución con PM2 (recomendado para producción)
+
+Para ejecutar la aplicación en producción, se recomienda usar PM2:
+
+1. Instala PM2:
+   ```bash
+   npm install -g pm2
+   ```
+
+2. Inicia la aplicación:
+   ```bash
+   pm2 start api/server.js --name "gymflow"
+   ```
+
+3. Configura PM2 para arrancar automáticamente:
+   ```bash
+   pm2 startup
+   pm2 save
+   ```
+
+## Actualización de la Aplicación
+
+Para actualizar la aplicación:
+
+1. Haz pull de los cambios:
+   ```bash
+   git pull
+   ```
+
+2. Reconstruye la aplicación:
+   ```bash
+   npm run build
+   ```
+
+3. Reinicia el servidor:
+   ```bash
+   pm2 restart gymflow
+   ```

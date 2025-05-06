@@ -109,19 +109,21 @@ echo "DEBUG_MODE=\"false\"" >> $ENV_FILE
 
 echo -e "${GREEN}Configuration file created successfully.${NC}"
 
-# Install dependencies
-echo -e "\n${YELLOW}Installing dependencies...${NC}"
-npm install express cors body-parser mysql2 nodemailer
+# Install frontend dependencies
+echo -e "\n${YELLOW}Installing frontend dependencies...${NC}"
+npm install
 
-# Create necessary directories
-if [ ! -d "./api/logs" ]; then
-    mkdir -p ./api/logs
-fi
+# Build the frontend
+echo -e "\n${YELLOW}Building frontend...${NC}"
+npm run build
+
+# Install backend dependencies
+echo -e "\n${YELLOW}Installing backend dependencies...${NC}"
+cd api && npm install && cd ..
 
 echo -e "${GREEN}GymFlow app setup completed successfully!${NC}"
 echo -e "\n${BLUE}To start the application:${NC}"
-echo -e "1. Build the frontend: ${YELLOW}npm run build${NC}"
-echo -e "2. Start the server: ${YELLOW}node api/server.js${NC}"
+echo -e "Just run: ${YELLOW}node api/server.js${NC}"
 echo -e "\nThe app will be available at: ${GREEN}http://localhost:3000${NC}"
 
 # Save user profile

@@ -1,7 +1,7 @@
 
 /**
  * Environment variable manager for the application
- * Simulates .env file functionality using localStorage
+ * Loads variables from the server API or uses localStorage as fallback
  */
 
 // Types for environment variables
@@ -30,11 +30,13 @@ export interface EnvVariables {
 class EnvManager {
   private static instance: EnvManager;
   private variables: EnvVariables = {};
+  private initialized: boolean = false;
+  private initializing: boolean = false;
+  private initPromise: Promise<void> | null = null;
   
   private constructor() {
     this.loadFromStorage();
-    // Apply variables when the app loads
-    setTimeout(() => this.applyVariables(), 0);
+    this.initPromise = this.initialize();
   }
   
   public static getInstance(): EnvManager {
@@ -42,6 +44,46 @@ class EnvManager {
       EnvManager.instance = new EnvManager();
     }
     return EnvManager.instance;
+  }
+  
+  private async initialize(): Promise<void> {
+    if (this.initialized || this.initializing) return;
+    
+    this.initializing = true;
+    
+    try {
+      // Try to fetch environment variables from the server API
+      const response = await fetch('/api/env');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.env) {
+          console.log('Environment variables loaded from server API');
+          // Merge with existing variables, prioritizing server values
+          this.variables = { ...this.variables, ...data.env };
+          this.saveToStorage();
+          
+          // Check if we need to update password fields from localStorage
+          const storedVars = localStorage.getItem('env_variables');
+          if (storedVars) {
+            const parsedVars = JSON.parse(storedVars);
+            if (parsedVars.MYSQL_PASSWORD) {
+              this.variables.MYSQL_PASSWORD = parsedVars.MYSQL_PASSWORD;
+            }
+            if (parsedVars.SMTP_PASSWORD) {
+              this.variables.SMTP_PASSWORD = parsedVars.SMTP_PASSWORD;
+            }
+          }
+        }
+      }
+    } catch (err) {
+      console.warn('Could not load environment variables from server API:', err);
+      // Continue with localStorage variables
+    }
+    
+    // Apply variables to the application
+    this.applyVariables();
+    this.initialized = true;
+    this.initializing = false;
   }
   
   private loadFromStorage(): void {
@@ -56,18 +98,13 @@ class EnvManager {
         this.variables = {};
       }
     } else {
-      // If no variables in localStorage, try to load from .env
-      this.loadFromEnvFile();
+      // If no variables in localStorage, use defaults
+      this.loadDefaults();
     }
   }
   
-  // This simulates loading from a .env file
-  // In a real app with server access, this would read from actual .env files
-  private loadFromEnvFile(): void {
-    // This is a placeholder - we can't actually read files from the filesystem in a browser
-    console.log('loadFromEnvFile is a simulation in browser environment');
-    
-    // For demo purposes, we'll just use some default values if nothing is in localStorage
+  // Load default values
+  private loadDefaults(): void {
     const defaultVars: EnvVariables = {
       APP_NAME: 'GymFlow',
       DEBUG_MODE: 'false',
@@ -77,6 +114,15 @@ class EnvManager {
     
     this.variables = defaultVars;
     this.saveToStorage();
+  }
+  
+  // Wait for initialization to complete
+  public async ready(): Promise<void> {
+    if (this.initialized) return;
+    if (this.initPromise) {
+      return this.initPromise;
+    }
+    return Promise.resolve();
   }
   
   public get(key: string): string | undefined {
@@ -182,3 +228,4 @@ class EnvManager {
 }
 
 export const envManager = EnvManager.getInstance();
+
