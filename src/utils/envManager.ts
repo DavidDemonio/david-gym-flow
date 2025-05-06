@@ -19,6 +19,8 @@ export interface EnvVariables {
   SMTP_USER?: string;
   SMTP_PASSWORD?: string;
   FROM_EMAIL?: string;
+  SMTP_SECURE?: string;
+  SMTP_SECURE_TYPE?: string;
   
   // Application settings
   APP_NAME?: string;
@@ -68,7 +70,9 @@ class EnvManager {
     // For demo purposes, we'll just use some default values if nothing is in localStorage
     const defaultVars: EnvVariables = {
       APP_NAME: 'GymFlow',
-      DEBUG_MODE: 'false'
+      DEBUG_MODE: 'false',
+      SMTP_SECURE: 'false',
+      SMTP_SECURE_TYPE: 'TLS'
     };
     
     this.variables = defaultVars;

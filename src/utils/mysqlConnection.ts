@@ -1,3 +1,4 @@
+
 /**
  * MySQL connection utility for the application
  * Handles connection to the database and provides CRUD operations
@@ -20,6 +21,8 @@ export interface EmailConfig {
   smtpUser: string;
   smtpPassword: string;
   fromEmail: string;
+  secure: boolean;
+  secureType: 'SSL' | 'TLS';
 }
 
 // Types for database data
@@ -81,7 +84,7 @@ class MySQLConnection {
     const savedConfig = localStorage.getItem('mysql_config');
     if (savedConfig) {
       this.config = JSON.parse(savedConfig);
-      this.simulateConnection();
+      this.initializeConnection();
     }
     
     // Get saved email configuration
@@ -104,18 +107,28 @@ class MySQLConnection {
     return MySQLConnection.instance;
   }
   
-  private async simulateConnection() {
+  private async initializeConnection() {
     if (!this.config) return;
     
     try {
-      // Simulate a connection delay
-      await new Promise(resolve => setTimeout(resolve, 500));
+      // For browser environment, we'll use the backend proxy approach
+      const response = await fetch('/api/mysql/connect', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.config),
+      });
       
-      this.connected = true;
-      this.log(`MySQL connection initialized: ${this.config.host}:${this.config.port}`);
+      const result = await response.json();
       
-      // Create necessary tables (simulated)
-      await this.simulateInitTables();
+      if (result.success) {
+        this.connected = true;
+        this.log(`MySQL connection initialized: ${this.config.host}:${this.config.port}`);
+      } else {
+        this.connected = false;
+        this.log(`Error initializing MySQL connection: ${result.error}`);
+      }
     } catch (err) {
       this.connected = false;
       this.log(`Error initializing MySQL connection: ${err}`);
@@ -123,23 +136,11 @@ class MySQLConnection {
     }
   }
   
-  private async simulateInitTables() {
-    try {
-      // Simulate table creation delay
-      await new Promise(resolve => setTimeout(resolve, 300));
-      
-      this.log('Database tables initialized (simulated)');
-    } catch (err) {
-      this.log(`Error initializing database tables: ${err}`);
-      console.error('Error initializing tables:', err);
-    }
-  }
-  
   public async setConfig(config: DbConfig): Promise<void> {
     this.config = config;
     // Save to localStorage for persistence
     localStorage.setItem('mysql_config', JSON.stringify(config));
-    await this.simulateConnection();
+    await this.initializeConnection();
     this.log(`MySQL configuration updated: ${config.host}:${config.port}`);
   }
   
@@ -151,7 +152,7 @@ class MySQLConnection {
     return this.connected;
   }
   
-  public setEmailConfig(config: EmailConfig): void {
+  public async setEmailConfig(config: EmailConfig): Promise<void> {
     this.emailConfig = config;
     localStorage.setItem('email_config', JSON.stringify(config));
     this.log(`SMTP configuration updated: ${config.smtpHost}:${config.smtpPort}`);
@@ -164,6 +165,29 @@ class MySQLConnection {
   public async setUserProfile(profile: UserProfile): Promise<void> {
     this.userProfile = profile;
     localStorage.setItem('user_profile', JSON.stringify(profile));
+    
+    // If connected, save to database too
+    if (this.connected && this.config) {
+      try {
+        const response = await fetch('/api/mysql/save-user-profile', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            config: this.config,
+            profile
+          }),
+        });
+        
+        const result = await response.json();
+        if (!result.success) {
+          throw new Error(result.error);
+        }
+      } catch (err) {
+        console.error('Error saving user profile to database:', err);
+      }
+    }
     
     this.log(`User profile updated: ${profile.email}`);
   }
@@ -182,22 +206,31 @@ class MySQLConnection {
     }
     
     try {
-      // Simulate a connection test with a delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/mysql/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.config),
+      });
       
-      // Simulate a successful connection 80% of the time
-      const success = Math.random() > 0.2;
+      const result = await response.json();
       
-      if (!success) {
-        throw new Error("Connection refused");
+      if (result.success) {
+        this.connected = true;
+        this.log(`Connection test successful to ${this.config.host}:${this.config.port}`);
+        return { 
+          success: true, 
+          message: `Conexión exitosa a ${this.config.database}@${this.config.host}` 
+        };
+      } else {
+        this.connected = false;
+        this.log(`Connection test failed to ${this.config.host}:${this.config.port}: ${result.error}`);
+        return { 
+          success: false, 
+          message: `Error de conexión: ${result.error}. Verifique los detalles y asegúrese de que el servidor esté en funcionamiento.` 
+        };
       }
-      
-      this.connected = true;
-      this.log(`Connection test successful to ${this.config.host}:${this.config.port}`);
-      return { 
-        success: true, 
-        message: `Conexión exitosa a ${this.config.database}@${this.config.host}` 
-      };
     } catch (err) {
       this.connected = false;
       this.log(`Connection test failed to ${this.config.host}:${this.config.port}: ${err}`);
@@ -218,21 +251,29 @@ class MySQLConnection {
     }
     
     try {
-      // Simulate testing an email configuration with delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const response = await fetch('/api/email/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.emailConfig),
+      });
       
-      // Simulate a successful connection 80% of the time
-      const success = Math.random() > 0.2;
+      const result = await response.json();
       
-      if (!success) {
-        throw new Error("SMTP authentication failed");
+      if (result.success) {
+        this.log(`SMTP test successful to ${this.emailConfig.smtpHost}:${this.emailConfig.smtpPort}`);
+        return { 
+          success: true, 
+          message: `Conexión SMTP exitosa a ${this.emailConfig.smtpHost}` 
+        };
+      } else {
+        this.log(`SMTP test failed to ${this.emailConfig.smtpHost}:${this.emailConfig.smtpPort}: ${result.error}`);
+        return { 
+          success: false, 
+          message: `Error de conexión SMTP: ${result.error}. Verifique los detalles del servidor.` 
+        };
       }
-      
-      this.log(`SMTP test successful to ${this.emailConfig.smtpHost}:${this.emailConfig.smtpPort}`);
-      return { 
-        success: true, 
-        message: `Conexión SMTP exitosa a ${this.emailConfig.smtpHost}` 
-      };
     } catch (err) {
       this.log(`SMTP test failed to ${this.emailConfig.smtpHost}:${this.emailConfig.smtpPort}: ${err}`);
       return { 
@@ -255,21 +296,34 @@ class MySQLConnection {
     this.log(`Attempting to send email to ${to}: ${subject}`);
     
     try {
-      // Simulate sending email with delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.emailConfig,
+          to,
+          subject,
+          body
+        }),
+      });
       
-      // Simulate success 90% of the time
-      const success = Math.random() > 0.1;
+      const result = await response.json();
       
-      if (!success) {
-        throw new Error("Failed to send email");
+      if (result.success) {
+        this.log(`Email sent successfully to ${to}`);
+        return { 
+          success: true, 
+          message: `Correo enviado correctamente a ${to}` 
+        };
+      } else {
+        this.log(`Failed to send email to ${to}: ${result.error}`);
+        return { 
+          success: false, 
+          message: `Error al enviar correo: ${result.error}. Por favor, intente de nuevo.` 
+        };
       }
-      
-      this.log(`Email sent successfully to ${to}`);
-      return { 
-        success: true, 
-        message: `Correo enviado correctamente a ${to}` 
-      };
     } catch (err) {
       this.log(`Failed to send email to ${to}: ${err}`);
       return { 
@@ -310,105 +364,249 @@ class MySQLConnection {
   // Equipment CRUD operations
   public async saveEquipment(equipment: Equipment[]): Promise<boolean> {
     try {
-      // Simulate save operation with delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      if (!this.connected || !this.config) {
+        // Fallback to localStorage if not connected
+        localStorage.setItem('app_equipment', JSON.stringify(equipment));
+        this.log(`Saved ${equipment.length} equipment items to localStorage (offline mode)`);
+        return true;
+      }
       
-      // Save to localStorage as a fallback
-      localStorage.setItem('app_equipment', JSON.stringify(equipment));
-      this.log(`Saved ${equipment.length} equipment items to simulated database`);
-      return true;
+      const response = await fetch('/api/mysql/save-equipment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.config,
+          equipment
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Also save to localStorage as backup
+        localStorage.setItem('app_equipment', JSON.stringify(equipment));
+        this.log(`Saved ${equipment.length} equipment items to database`);
+        return true;
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
       this.log(`Error saving equipment: ${err}`);
       console.error('Error saving equipment:', err);
+      
+      // Try to save to localStorage as fallback
+      try {
+        localStorage.setItem('app_equipment', JSON.stringify(equipment));
+      } catch (localErr) {
+        console.error('Error saving equipment to localStorage:', localErr);
+      }
+      
       return false;
     }
   }
   
   public async getEquipment(): Promise<Equipment[]> {
     try {
-      // Simulate database fetch with delay
-      await new Promise(resolve => setTimeout(resolve, 600));
+      if (!this.connected || !this.config) {
+        // Fallback to localStorage if not connected
+        const data = localStorage.getItem('app_equipment');
+        const equipment = data ? JSON.parse(data) : [];
+        this.log(`Retrieved ${equipment.length} equipment items from localStorage (offline mode)`);
+        return equipment;
+      }
       
-      // Get from localStorage
-      const data = localStorage.getItem('app_equipment');
-      const equipment = data ? JSON.parse(data) : [];
-      this.log(`Retrieved ${equipment.length} equipment items from simulated database`);
-      return equipment;
+      const response = await fetch('/api/mysql/get-equipment', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.config),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        this.log(`Retrieved ${result.data.length} equipment items from database`);
+        return result.data;
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
-      // Fallback to empty array
+      // Fallback to localStorage
       this.log(`Error retrieving equipment from database: ${err}`);
       console.error('Error getting equipment:', err);
-      return [];
+      
+      const data = localStorage.getItem('app_equipment');
+      const equipment = data ? JSON.parse(data) : [];
+      return equipment;
     }
   }
   
   // Exercise CRUD operations
   public async saveExercises(exercises: Exercise[]): Promise<boolean> {
     try {
-      // Simulate save operation with delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      if (!this.connected || !this.config) {
+        // Fallback to localStorage if not connected
+        localStorage.setItem('app_exercises', JSON.stringify(exercises));
+        this.log(`Saved ${exercises.length} exercises to localStorage (offline mode)`);
+        return true;
+      }
       
-      // Save to localStorage
-      localStorage.setItem('app_exercises', JSON.stringify(exercises));
-      this.log(`Saved ${exercises.length} exercises to simulated database`);
-      return true;
+      const response = await fetch('/api/mysql/save-exercises', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.config,
+          exercises
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Also save to localStorage as backup
+        localStorage.setItem('app_exercises', JSON.stringify(exercises));
+        this.log(`Saved ${exercises.length} exercises to database`);
+        return true;
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
       this.log(`Error saving exercises: ${err}`);
       console.error('Error saving exercises:', err);
+      
+      // Try to save to localStorage as fallback
+      try {
+        localStorage.setItem('app_exercises', JSON.stringify(exercises));
+      } catch (localErr) {
+        console.error('Error saving exercises to localStorage:', localErr);
+      }
+      
       return false;
     }
   }
   
   public async getExercises(): Promise<Exercise[]> {
     try {
-      // Simulate database fetch with delay
-      await new Promise(resolve => setTimeout(resolve, 600));
+      if (!this.connected || !this.config) {
+        // Fallback to localStorage if not connected
+        const data = localStorage.getItem('app_exercises');
+        const exercises = data ? JSON.parse(data) : [];
+        this.log(`Retrieved ${exercises.length} exercises from localStorage (offline mode)`);
+        return exercises;
+      }
       
-      // Get from localStorage
-      const data = localStorage.getItem('app_exercises');
-      const exercises = data ? JSON.parse(data) : [];
-      this.log(`Retrieved ${exercises.length} exercises from simulated database`);
-      return exercises;
+      const response = await fetch('/api/mysql/get-exercises', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.config),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        this.log(`Retrieved ${result.data.length} exercises from database`);
+        return result.data;
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
-      // Fallback to empty array
+      // Fallback to localStorage
       this.log(`Error retrieving exercises from database: ${err}`);
       console.error('Error getting exercises:', err);
-      return [];
+      
+      const data = localStorage.getItem('app_exercises');
+      const exercises = data ? JSON.parse(data) : [];
+      return exercises;
     }
   }
   
   // Routine CRUD operations
   public async saveRoutines(routines: Routine[]): Promise<boolean> {
     try {
-      // Simulate save operation with delay
-      await new Promise(resolve => setTimeout(resolve, 800));
+      if (!this.connected || !this.config) {
+        // Fallback to localStorage if not connected
+        localStorage.setItem('app_routines', JSON.stringify(routines));
+        this.log(`Saved ${routines.length} routines to localStorage (offline mode)`);
+        return true;
+      }
       
-      // Save to localStorage
-      localStorage.setItem('app_routines', JSON.stringify(routines));
-      this.log(`Saved ${routines.length} routines to simulated database`);
-      return true;
+      const response = await fetch('/api/mysql/save-routines', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.config,
+          routines
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        // Also save to localStorage as backup
+        localStorage.setItem('app_routines', JSON.stringify(routines));
+        this.log(`Saved ${routines.length} routines to database`);
+        return true;
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
       this.log(`Error saving routines: ${err}`);
       console.error('Error saving routines:', err);
+      
+      // Try to save to localStorage as fallback
+      try {
+        localStorage.setItem('app_routines', JSON.stringify(routines));
+      } catch (localErr) {
+        console.error('Error saving routines to localStorage:', localErr);
+      }
+      
       return false;
     }
   }
   
   public async getRoutines(): Promise<Routine[]> {
     try {
-      // Simulate database fetch with delay
-      await new Promise(resolve => setTimeout(resolve, 600));
+      if (!this.connected || !this.config) {
+        // Fallback to localStorage if not connected
+        const data = localStorage.getItem('app_routines');
+        const routines = data ? JSON.parse(data) : [];
+        this.log(`Retrieved ${routines.length} routines from localStorage (offline mode)`);
+        return routines;
+      }
       
-      // Get from localStorage
-      const data = localStorage.getItem('app_routines');
-      const routines = data ? JSON.parse(data) : [];
-      this.log(`Retrieved ${routines.length} routines from simulated database`);
-      return routines;
+      const response = await fetch('/api/mysql/get-routines', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(this.config),
+      });
+      
+      const result = await response.json();
+      
+      if (result.success) {
+        this.log(`Retrieved ${result.data.length} routines from database`);
+        return result.data;
+      } else {
+        throw new Error(result.error);
+      }
     } catch (err) {
-      // Fallback to empty array
+      // Fallback to localStorage
       this.log(`Error retrieving routines from database: ${err}`);
       console.error('Error getting routines:', err);
-      return [];
+      
+      const data = localStorage.getItem('app_routines');
+      const routines = data ? JSON.parse(data) : [];
+      return routines;
     }
   }
   
@@ -442,10 +640,24 @@ class MySQLConnection {
   
   // Simulates disconnecting from the database
   public async disconnect(): Promise<void> {
+    if (this.connected && this.config) {
+      try {
+        await fetch('/api/mysql/disconnect', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(this.config),
+        });
+      } catch (err) {
+        console.error('Error disconnecting from database:', err);
+      }
+    }
+    
     this.connected = false;
     this.config = null;
     localStorage.removeItem('mysql_config');
-    this.log('Disconnected from simulated database');
+    this.log('Disconnected from database');
   }
   
   // Load environment variables from envManager
@@ -466,12 +678,14 @@ class MySQLConnection {
     
     // Apply SMTP config if available
     if (vars.SMTP_HOST && vars.SMTP_USER) {
-      this.setEmailConfig({
+      await this.setEmailConfig({
         smtpHost: vars.SMTP_HOST,
         smtpPort: parseInt(vars.SMTP_PORT || '587'),
         smtpUser: vars.SMTP_USER,
         smtpPassword: vars.SMTP_PASSWORD || '',
-        fromEmail: vars.FROM_EMAIL || vars.SMTP_USER
+        fromEmail: vars.FROM_EMAIL || vars.SMTP_USER,
+        secure: vars.SMTP_SECURE === 'true',
+        secureType: (vars.SMTP_SECURE_TYPE as 'SSL' | 'TLS') || 'TLS'
       });
       this.log('Loaded SMTP configuration from environment variables');
     }

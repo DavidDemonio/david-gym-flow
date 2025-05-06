@@ -9,6 +9,7 @@ import { Switch } from '@/components/ui/switch';
 import { Send, TestTube, Save, User, AlertCircle, Check, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 const EmailSettingsForm: React.FC = () => {
   const { toast } = useToast();
@@ -17,7 +18,9 @@ const EmailSettingsForm: React.FC = () => {
     smtpPort: 587,
     smtpUser: '',
     smtpPassword: '',
-    fromEmail: ''
+    fromEmail: '',
+    secure: false,
+    secureType: 'TLS'
   });
   
   const [userProfile, setUserProfile] = useState<UserProfile>({
@@ -45,7 +48,7 @@ const EmailSettingsForm: React.FC = () => {
   }, []);
   
   // Handle email config changes
-  const handleEmailConfigChange = (field: keyof EmailConfig, value: string | number) => {
+  const handleEmailConfigChange = (field: keyof EmailConfig, value: string | number | boolean) => {
     setEmailConfig(prev => ({ ...prev, [field]: value }));
   };
   
@@ -68,7 +71,7 @@ const EmailSettingsForm: React.FC = () => {
     
     setSaveEmailStatus('saving');
     try {
-      mysqlConnection.setEmailConfig(emailConfig);
+      await mysqlConnection.setEmailConfig(emailConfig);
       setSaveEmailStatus('success');
       toast({
         title: "Configuración guardada",
@@ -416,6 +419,35 @@ const EmailSettingsForm: React.FC = () => {
               onChange={(e) => handleEmailConfigChange('fromEmail', e.target.value)}
               placeholder="noreply@tuapp.com"
             />
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="secure_connection"
+                checked={emailConfig.secure}
+                onCheckedChange={(checked) => handleEmailConfigChange('secure', checked)}
+              />
+              <Label htmlFor="secure_connection">Conexión Segura (SSL/TLS)</Label>
+            </div>
+            
+            {emailConfig.secure && (
+              <div className="space-y-2">
+                <Label htmlFor="secure_type">Tipo de Seguridad</Label>
+                <Select
+                  value={emailConfig.secureType}
+                  onValueChange={(value) => handleEmailConfigChange('secureType', value)}
+                >
+                  <SelectTrigger id="secure_type">
+                    <SelectValue placeholder="Seleccionar tipo" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="SSL">SSL</SelectItem>
+                    <SelectItem value="TLS">TLS</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CardContent>
         <CardFooter className="flex flex-col space-y-3">
