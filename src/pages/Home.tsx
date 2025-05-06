@@ -66,6 +66,36 @@ const Home = () => {
         </div>
       </div>
       
+      {/* Quick Actions with improved visual hierarchy - moved higher up */}
+      <div className="glass-card rounded-2xl p-6 animate-fadeInUp mb-10">
+        <h2 className="text-2xl font-bold mb-6">Acciones Rápidas</h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button 
+            onClick={() => navigate('/crear-rutina')} 
+            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-purple-500/20"
+          >
+            <span className="font-medium">Crear Rutina</span>
+            <Dumbbell className="h-5 w-5 transition-transform group-hover:scale-110" />
+          </button>
+          
+          <button 
+            onClick={() => navigate('/calculadora-imc')}
+            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-blue-500/20"
+          >
+            <span className="font-medium">Calculadora IMC</span>
+            <BarChart className="h-5 w-5 transition-transform group-hover:scale-110" />
+          </button>
+          
+          <button 
+            onClick={() => navigate('/mi-rutina')}
+            className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-violet-500/20"
+          >
+            <span className="font-medium">Ver Mi Rutina</span>
+            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+          </button>
+        </div>
+      </div>
+      
       {/* Feature Cards with hover effects */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
         {features.map((feature, index) => (
@@ -96,47 +126,6 @@ const Home = () => {
               <span className="font-medium">{benefit.text}</span>
             </div>
           ))}
-        </div>
-      </div>
-      
-      {/* Quick Actions with improved visual hierarchy */}
-      <div className="glass-card rounded-2xl p-6 animate-fadeInUp animate-delay-300 card-3d">
-        <h2 className="text-2xl font-bold mb-6">Acciones Rápidas</h2>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button 
-            onClick={() => navigate('/crear-rutina')} 
-            className="bg-gradient-to-r from-indigo-500 to-purple-500 hover:from-indigo-600 hover:to-purple-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-purple-500/20"
-          >
-            <span className="font-medium">Crear Rutina</span>
-            <Dumbbell className="h-5 w-5 transition-transform group-hover:scale-110" />
-          </button>
-          
-          <button 
-            onClick={() => navigate('/calculadora-imc')}
-            className="bg-gradient-to-r from-blue-500 to-cyan-500 hover:from-blue-600 hover:to-cyan-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-blue-500/20"
-          >
-            <span className="font-medium">Calculadora IMC</span>
-            <BarChart className="h-5 w-5 transition-transform group-hover:scale-110" />
-          </button>
-          
-          <button 
-            onClick={() => navigate('/mi-rutina')}
-            className="bg-gradient-to-r from-violet-500 to-fuchsia-500 hover:from-violet-600 hover:to-fuchsia-600 text-white rounded-xl p-4 transition-all flex items-center justify-between group shadow-md hover:shadow-lg hover:shadow-violet-500/20"
-          >
-            <span className="font-medium">Ver Mi Rutina</span>
-            <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
-          </button>
-        </div>
-      </div>
-      
-      {/* Testimonial */}
-      <div className="mt-12 p-8 rounded-2xl bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20 border border-purple-100 dark:border-purple-900/30 shadow-lg animate-fadeInUp animate-delay-300">
-        <div className="flex flex-col items-center text-center">
-          <div className="text-3xl mb-4">⭐️⭐️⭐️⭐️⭐️</div>
-          <p className="text-lg italic text-gray-700 dark:text-gray-300 mb-4">
-            "Esta aplicación ha transformado completamente mi rutina de ejercicios. ¡Nunca había sido tan fácil mantenerme en forma!"
-          </p>
-          <p className="font-semibold gradient-text">David - Usuario de GymFlow</p>
         </div>
       </div>
     </div>
