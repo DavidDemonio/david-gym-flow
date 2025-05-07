@@ -62,22 +62,32 @@ const MaquinasEjercicios = () => {
   
   // Convert exercise data to our Exercise type with proper adaptation - ensure string IDs
   const adaptedExercises = (exercises as unknown as DataExercise[]).map(ex => {
-    const adapted = adaptExercise(ex);
-    // Ensure id is always a string to fix type compatibility issues
-    if (typeof adapted.id !== 'string') {
-      adapted.id = String(adapted.id);
-    }
-    return adapted;
+    // Always convert to string ID to match the expected type in equipmentData.ts
+    const adapted = adaptExercise({
+      ...ex,
+      id: typeof ex.id === 'number' ? String(ex.id) : ex.id
+    });
+    
+    // Double-check that ID is always a string
+    return {
+      ...adapted,
+      id: String(adapted.id)
+    };
   });
   
   // Convert equipment data to our Equipment type with proper adaptation - ensure string IDs
   const adaptedEquipment = (gymEquipment as unknown as DataEquipment[]).map(eq => {
-    const adapted = adaptEquipment(eq);
-    // Ensure id is always a string to fix type compatibility issues
-    if (typeof adapted.id !== 'string') {
-      adapted.id = String(adapted.id);
-    }
-    return adapted;
+    // Always convert to string ID to match the expected type in equipmentData.ts
+    const adapted = adaptEquipment({
+      ...eq,
+      id: typeof eq.id === 'number' ? String(eq.id) : eq.id
+    });
+    
+    // Double-check that ID is always a string
+    return {
+      ...adapted,
+      id: String(adapted.id)
+    };
   });
   
   // Function to clear search when tab changes
@@ -165,8 +175,23 @@ const MaquinasEjercicios = () => {
   const filteredExercises = filterExercises();
   
   // Convert exercises to data format for compatible types
-  const convertedExercises = filteredExercises.map(ex => convertMySQLToDataExercise(ex));
-  const convertedEquipment = filteredEquipment.map(eq => convertMySQLToDataEquipment(eq));
+  const convertedExercises = filteredExercises.map(ex => {
+    const dataEx = convertMySQLToDataExercise(ex);
+    // Ensure ID is always a string
+    return {
+      ...dataEx,
+      id: String(dataEx.id)
+    };
+  });
+  
+  const convertedEquipment = filteredEquipment.map(eq => {
+    const dataEq = convertMySQLToDataEquipment(eq);
+    // Ensure ID is always a string
+    return {
+      ...dataEq,
+      id: String(dataEq.id)
+    };
+  });
   
   return (
     <div className="container mx-auto px-4 py-6">
