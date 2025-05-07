@@ -87,6 +87,13 @@ class EnvManager {
     this.variables = { ...this.variables, ...vars };
     this.saveToLocalStorage();
   }
+
+  /**
+   * Set multiple environment variables (alias for setAll)
+   */
+  async setVariables(vars: EnvVariables): Promise<void> {
+    return this.setAll(vars);
+  }
   
   /**
    * Get all environment variables
@@ -97,9 +104,16 @@ class EnvManager {
     }
     return { ...this.variables };
   }
+
+  /**
+   * Get all variables (alias for getAll)
+   */
+  async getAllVariables(): Promise<EnvVariables> {
+    return this.getAll();
+  }
   
   /**
-   * Update variables on server
+   * Update variables on server and in local storage
    */
   async updateVariables(vars: EnvVariables): Promise<boolean> {
     try {
@@ -124,6 +138,53 @@ class EnvManager {
       return data.success;
     } catch (err) {
       console.error('Error updating environment variables:', err);
+      return false;
+    }
+  }
+
+  /**
+   * Export variables to .env format
+   */
+  exportToEnvFormat(): string {
+    return Object.entries(this.variables)
+      .map(([key, value]) => `${key}=${value}`)
+      .join('\n');
+  }
+
+  /**
+   * Import variables from .env format
+   */
+  importFromEnvFormat(envText: string): void {
+    const vars: EnvVariables = {};
+    
+    // Parse .env format (KEY=value)
+    envText.split('\n').forEach(line => {
+      line = line.trim();
+      if (!line || line.startsWith('#')) return;
+      
+      const match = line.match(/^([^=]+)=(.*)$/);
+      if (match) {
+        const [, key, value] = match;
+        vars[key.trim()] = value;
+      }
+    });
+    
+    this.setAll(vars);
+  }
+
+  /**
+   * Refresh environment variables from server
+   */
+  async refresh(): Promise<boolean> {
+    try {
+      const vars = await mysqlConnection.loadEnvironmentVariables();
+      if (vars && Object.keys(vars).length > 0) {
+        await this.setAll(vars);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Error refreshing environment variables:', error);
       return false;
     }
   }

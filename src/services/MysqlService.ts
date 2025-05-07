@@ -99,7 +99,7 @@ class MysqlService {
       
       if (result.success && result.env) {
         // Update local environment manager
-        await envManager.setAll(result.env);
+        await envManager.setVariables(result.env);
         
         // Store in localStorage for persistence across refreshes
         localStorage.setItem('envVariables', JSON.stringify(result.env));
@@ -116,12 +116,12 @@ class MysqlService {
 
   /**
    * Generate PDF routine from routine data
-   * This method now uses the client-side PdfService directly
    */
   async generateRoutinePDF(routineData: any): Promise<void> {
-    const PdfService = (await import('../services/PdfService')).default;
+    // Import dynamically to avoid build errors
     try {
-      return await PdfService.generateRoutinePDF(routineData);
+      const { generatePDF } = await import('../utils/pdfGenerator');
+      return generatePDF(routineData);
     } catch (error) {
       console.error('Error generating PDF:', error);
       throw error;
