@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X } from 'lucide-react';
 import { gymEquipment, exercises, muscleGroups, equipmentCategories } from '../data/equipmentData';
@@ -17,8 +16,8 @@ import ExerciseDetailDialog from '../components/ExerciseDetailDialog';
 import CreateWeeklyRoutineDialog from '../components/CreateWeeklyRoutineDialog';
 
 import {
-  adaptExerciseData,
-  adaptEquipmentData,
+  adaptExercise,
+  adaptEquipment,
   convertMySQLToDataExercise,
   convertMySQLToDataEquipment,
   DataExercise,
@@ -63,10 +62,10 @@ const MaquinasEjercicios = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Convert exercise data to our Exercise type with proper adaptation
-  const adaptedExercises: Exercise[] = (exercises as DataExercise[]).map(ex => adaptExerciseData(ex));
+  const adaptedExercises: Exercise[] = (exercises as DataExercise[]).map(ex => adaptExercise(ex));
   
   // Convert equipment data to our Equipment type with proper adaptation
-  const adaptedEquipment: Equipment[] = (gymEquipment as DataEquipment[]).map(eq => adaptEquipmentData(eq));
+  const adaptedEquipment: Equipment[] = (gymEquipment as DataEquipment[]).map(eq => adaptEquipment(eq));
   
   // Function to clear search when tab changes
   useEffect(() => {
@@ -328,10 +327,10 @@ const MaquinasEjercicios = () => {
               animate="show"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {convertedExercises.map(exercise => (
+              {filteredExercises.map(exercise => (
                 <motion.div key={exercise.id} variants={itemVariants}>
                   <ExerciseCard 
-                    exercise={exercise as unknown as Exercise}
+                    exercise={exercise}
                     onClick={() => setSelectedExercise(adaptedExercises.find(ex => ex.id === exercise.id) || null)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
@@ -365,10 +364,10 @@ const MaquinasEjercicios = () => {
               animate="show"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {convertedEquipment.map(equipment => (
+              {filteredEquipment.map(equipment => (
                 <motion.div key={equipment.id} variants={itemVariants}>
                   <EquipmentCard 
-                    equipment={equipment as unknown as Equipment}
+                    equipment={equipment}
                     onClick={() => setSelectedEquipment(adaptedEquipment.find(eq => eq.id === equipment.id) || null)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
@@ -379,12 +378,11 @@ const MaquinasEjercicios = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Dialogs */}
       <ExerciseDetailDialog 
         exercise={selectedExercise}
         open={!!selectedExercise}
         onClose={() => setSelectedExercise(null)}
-        onAddToRoutine={(exercise) => handleAddToRoutine(exercise as Exercise)}
+        onAddToRoutine={handleAddToRoutine}
       />
       
       <CreateWeeklyRoutineDialog 

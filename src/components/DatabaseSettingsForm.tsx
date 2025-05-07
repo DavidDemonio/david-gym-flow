@@ -64,7 +64,7 @@ export function DatabaseSettingsForm() {
           
           toast({
             title: success ? "Conexión exitosa" : "Error de conexión",
-            description: result?.message ?? successMessage,
+            description: result?.message || successMessage,
           });
         } else if (typeof result === 'boolean') {
           // For boolean result

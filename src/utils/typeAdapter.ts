@@ -157,3 +157,8 @@ export function convertMySQLToDataEquipment(equipment: Equipment): DataEquipment
     type: equipment.type
   };
 }
+
+// Add these functions to match the imports in MaquinasEjercicios
+export const adaptExerciseData = adaptExercise;
+export const adaptEquipmentData = adaptEquipment;
+
