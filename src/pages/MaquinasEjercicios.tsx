@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X, ArrowRight } from 'lucide-react';
+import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X } from 'lucide-react';
 import { gymEquipment, exercises, muscleGroups, equipmentCategories } from '../data/equipmentData';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -16,56 +16,18 @@ import ExerciseCard from '../components/ExerciseCard';
 import ExerciseDetailDialog from '../components/ExerciseDetailDialog';
 import CreateWeeklyRoutineDialog from '../components/CreateWeeklyRoutineDialog';
 
-import { adaptExerciseData, adaptEquipmentData } from '../utils/typeFixAdapter';
+import {
+  adaptExerciseData,
+  adaptEquipmentData,
+  convertMySQLToDataExercise,
+  convertMySQLToDataEquipment,
+  DataExercise,
+  DataEquipment,
+  ExerciseCardProps,
+  EquipmentCardProps,
+  CreateWeeklyRoutineDialogProps
+} from '../utils/typeAdapter';
 import { Exercise, Equipment } from '../utils/mysqlConnection';
-
-// Define our own data interfaces that match the ones from equipmentData.ts
-interface DataExercise {
-  id: string;
-  name: string;
-  description: string;
-  muscleGroups: string[];
-  equipment: string[];
-  emoji: string;
-  difficulty?: string;
-  requiresGym?: boolean;
-  videoUrl?: string;
-  sets?: number;
-  reps?: string;
-  rest?: string;
-  calories?: number;
-  caloriesPerRep?: number;
-}
-
-interface DataEquipment {
-  id: string;
-  name: string;
-  muscleGroups: string[];
-  description: string;
-  image?: string;
-  emoji?: string;
-  category?: string;
-  caloriesPerHour?: number;
-}
-
-// Update interface definitions to include className
-interface ExerciseCardProps {
-  exercise: Exercise | DataExercise;
-  onClick: () => void;
-  className?: string;
-}
-
-interface EquipmentCardProps {
-  equipment: Equipment | DataEquipment;
-  onClick: () => void;
-  className?: string;
-}
-
-interface CreateWeeklyRoutineDialogProps {
-  exercises: Exercise[];
-  open: boolean;
-  onClose: () => void;
-}
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -189,6 +151,10 @@ const MaquinasEjercicios = () => {
   // Get filtered data
   const filteredEquipment = filterEquipment();
   const filteredExercises = filterExercises();
+  
+  // Convert exercises to data format for components that expect different interfaces
+  const convertedExercises = filteredExercises.map(ex => convertMySQLToDataExercise(ex));
+  const convertedEquipment = filteredEquipment.map(eq => convertMySQLToDataEquipment(eq));
   
   return (
     <div className="container mx-auto px-4 py-6">
@@ -362,11 +328,11 @@ const MaquinasEjercicios = () => {
               animate="show"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {filteredExercises.map(exercise => (
+              {convertedExercises.map(exercise => (
                 <motion.div key={exercise.id} variants={itemVariants}>
                   <ExerciseCard 
-                    exercise={exercise}
-                    onClick={() => setSelectedExercise(exercise)}
+                    exercise={exercise as unknown as Exercise}
+                    onClick={() => setSelectedExercise(adaptedExercises.find(ex => ex.id === exercise.id) || null)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
                 </motion.div>
@@ -399,11 +365,11 @@ const MaquinasEjercicios = () => {
               animate="show"
               className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"
             >
-              {filteredEquipment.map(equipment => (
+              {convertedEquipment.map(equipment => (
                 <motion.div key={equipment.id} variants={itemVariants}>
                   <EquipmentCard 
-                    equipment={equipment}
-                    onClick={() => setSelectedEquipment(equipment)}
+                    equipment={equipment as unknown as Equipment}
+                    onClick={() => setSelectedEquipment(adaptedEquipment.find(eq => eq.id === equipment.id) || null)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
                 </motion.div>

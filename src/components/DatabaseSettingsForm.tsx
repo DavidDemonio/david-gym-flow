@@ -55,7 +55,7 @@ export function DatabaseSettingsForm() {
         // Handle possible result type variants
         if (typeof result === 'object' && 'success' in result) {
           // For object with success property
-          const success = result.success === true;
+          const success = result?.success === true;
           setIsConnected(success);
           
           const successMessage = success ? 
@@ -64,7 +64,7 @@ export function DatabaseSettingsForm() {
           
           toast({
             title: success ? "Conexión exitosa" : "Error de conexión",
-            description: result.message ?? successMessage,
+            description: result?.message ?? successMessage,
           });
         } else if (typeof result === 'boolean') {
           // For boolean result

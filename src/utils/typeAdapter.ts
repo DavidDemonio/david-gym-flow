@@ -30,6 +30,37 @@ export interface RoutineWithStatus extends Routine {
   status: string;
 }
 
+// Define interfaces for data source Exercise and Equipment which might have different shapes
+export interface DataExercise {
+  id: string;
+  name: string;
+  description: string;
+  muscleGroups: string[];
+  equipment: string[] | null;
+  emoji: string;
+  difficulty?: string;
+  requiresGym?: boolean;
+  videoUrl?: string;
+  sets?: number;
+  reps?: string;
+  rest?: string;
+  calories?: number;
+  caloriesPerRep?: number;
+  type?: string;
+}
+
+export interface DataEquipment {
+  id: string;
+  name: string;
+  muscleGroups: string[];
+  description: string;
+  image?: string;
+  emoji?: string;
+  category?: string;
+  caloriesPerHour?: number;
+  type?: string;
+}
+
 /**
  * Convert an object to an Exercise type with all required properties
  */
@@ -84,5 +115,45 @@ export function adaptRoutine(data: any): RoutineWithStatus {
     objetivo: data.objetivo || '',
     nivel: data.nivel || '',
     equipamiento: data.equipamiento || ''
+  };
+}
+
+/**
+ * Convert MySQL Exercise to DataExercise format
+ */
+export function convertMySQLToDataExercise(exercise: Exercise): DataExercise {
+  return {
+    id: String(exercise.id),
+    name: exercise.name,
+    description: exercise.description,
+    muscleGroups: exercise.muscleGroups,
+    equipment: exercise.equipment,
+    emoji: exercise.emoji,
+    difficulty: exercise.difficulty,
+    requiresGym: exercise.requiresGym,
+    videoUrl: exercise.videoUrl,
+    sets: exercise.sets,
+    reps: exercise.reps,
+    rest: exercise.rest,
+    calories: exercise.calories,
+    caloriesPerRep: exercise.caloriesPerRep,
+    type: exercise.type
+  };
+}
+
+/**
+ * Convert MySQL Equipment to DataEquipment format
+ */
+export function convertMySQLToDataEquipment(equipment: Equipment): DataEquipment {
+  return {
+    id: String(equipment.id),
+    name: equipment.name,
+    description: equipment.description,
+    muscleGroups: equipment.muscleGroups,
+    image: equipment.image,
+    emoji: equipment.emoji,
+    category: equipment.category,
+    caloriesPerHour: equipment.caloriesPerHour,
+    type: equipment.type
   };
 }
