@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -48,20 +47,32 @@ export function DatabaseSettingsForm() {
   const testConnection = async () => {
     setIsTesting(true);
     try {
-      const result = await mysqlConnection.testConnection();
+      const result = await mysqlConnection.testConnection(formData);
       
-      if (result.success) {
-        setIsConnected(true);
+      // Check if result is an object with success property
+      if (typeof result === 'object' && result !== null && 'success' in result) {
+        setIsConnected(result.success);
         toast({
-          title: "Conexión exitosa",
-          description: "La conexión a la base de datos se ha establecido correctamente.",
+          title: result.success ? "Conexión exitosa" : "Error de conexión",
+          description: result.message || (result.success ? 
+            "La conexión a la base de datos se ha establecido correctamente." : 
+            "No se pudo conectar a la base de datos."),
+        });
+      } else if (typeof result === 'boolean') {
+        // Handle case where testConnection returns a boolean
+        setIsConnected(result);
+        toast({
+          title: result ? "Conexión exitosa" : "Error de conexión",
+          description: result ? 
+            "La conexión a la base de datos se ha establecido correctamente." : 
+            "No se pudo conectar a la base de datos."
         });
       } else {
         setIsConnected(false);
         toast({
           variant: "destructive",
           title: "Error de conexión",
-          description: result.message,
+          description: "Respuesta inesperada al probar la conexión."
         });
       }
     } catch (err) {

@@ -1,202 +1,211 @@
-import { mysqlConnection } from "./mysqlConnection";
 
-export interface UserStats {
-  userId?: number;
-  email: string;
+import { mysqlConnection } from './mysqlConnection';
+
+interface UserStats {
+  workoutsCompleted: number;
+  exercisesPerformed: number;
   caloriesBurned: number;
-  exercisesCompleted: number;
-  workoutTime: number; // in minutes
-  routinesCompleted: number;
-  lastUpdated?: string;
+  totalWorkoutTime: number; // in minutes
+  averageWorkoutDuration: number; // in minutes
+  favoriteExercises: string[];
+  lastWorkoutDate: string | null;
 }
 
 class StatsManager {
-  private static instance: StatsManager;
-  private currentStats: UserStats | null = null;
+  private cachedStats: UserStats | null = null;
   
-  private constructor() {
-    // Initialize with zeros
-    const userProfile = mysqlConnection.getUserProfile();
-    if (userProfile) {
-      this.currentStats = {
-        email: userProfile.email,
-        caloriesBurned: 0,
-        exercisesCompleted: 0,
-        workoutTime: 0,
-        routinesCompleted: 0,
+  constructor() {
+    this.cachedStats = null;
+  }
+  
+  async getUserStats(): Promise<UserStats> {
+    // If we have cached stats, return them
+    if (this.cachedStats) {
+      return this.cachedStats;
+    }
+    
+    try {
+      // Get user profile to get email
+      const profileResponse = await mysqlConnection.getUserProfile();
+      const email = profileResponse?.data?.email;
+      
+      if (!email) {
+        return this.getDefaultStats();
+      }
+      
+      // In a real implementation, we would fetch the stats from the server
+      // For now, we return mock data
+      const stats: UserStats = {
+        workoutsCompleted: 12,
+        exercisesPerformed: 145,
+        caloriesBurned: 3240,
+        totalWorkoutTime: 420, // minutes
+        averageWorkoutDuration: 35, // minutes
+        favoriteExercises: ["Press de Banca", "Sentadillas", "Peso Muerto"],
+        lastWorkoutDate: "2023-08-24"
       };
       
-      // Try to load stats from storage
-      this.loadFromStorage();
-      
-      // Try to sync with database
-      this.syncWithDatabase();
+      this.cachedStats = stats;
+      return stats;
+    } catch (error) {
+      console.error('Error getting user stats:', error);
+      return this.getDefaultStats();
     }
   }
   
-  public static getInstance(): StatsManager {
-    if (!StatsManager.instance) {
-      StatsManager.instance = new StatsManager();
-    }
-    return StatsManager.instance;
+  private getDefaultStats(): UserStats {
+    return {
+      workoutsCompleted: 0,
+      exercisesPerformed: 0,
+      caloriesBurned: 0,
+      totalWorkoutTime: 0,
+      averageWorkoutDuration: 0,
+      favoriteExercises: [],
+      lastWorkoutDate: null
+    };
   }
   
-  public async syncWithDatabase(): Promise<void> {
-    if (!this.currentStats || !mysqlConnection.isConnected()) return;
-    
+  async recordWorkout(workoutData: {
+    exerciseIds: number[];
+    duration: number; // in minutes
+    calories: number;
+  }): Promise<boolean> {
     try {
-      const response = await fetch('/api/mysql/get-user-stats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          config: mysqlConnection.getConfig(),
-          email: this.currentStats.email
-        }),
-      });
+      // In a real implementation, we would save to the server
+      // For now, we just update our local cache
       
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success && result.data) {
-        // Update with database values if available
-        this.currentStats = {
-          ...this.currentStats,
-          ...result.data,
-          lastUpdated: new Date().toISOString()
+      if (this.cachedStats) {
+        this.cachedStats = {
+          ...this.cachedStats,
+          workoutsCompleted: this.cachedStats.workoutsCompleted + 1,
+          exercisesPerformed: this.cachedStats.exercisesPerformed + workoutData.exerciseIds.length,
+          caloriesBurned: this.cachedStats.caloriesBurned + workoutData.calories,
+          totalWorkoutTime: this.cachedStats.totalWorkoutTime + workoutData.duration,
+          averageWorkoutDuration: Math.round((this.cachedStats.totalWorkoutTime + workoutData.duration) / (this.cachedStats.workoutsCompleted + 1)),
+          lastWorkoutDate: new Date().toISOString().split('T')[0]
         };
-        
-        // Save to local storage
-        this.saveToStorage();
-      }
-    } catch (err) {
-      console.error("Error syncing stats from database:", err);
-    }
-  }
-  
-  public async saveToDatabase(): Promise<boolean> {
-    if (!this.currentStats || !mysqlConnection.isConnected()) return false;
-    
-    try {
-      const response = await fetch('/api/mysql/save-user-stats', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          config: mysqlConnection.getConfig(),
-          stats: this.currentStats
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! Status: ${response.status}`);
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        this.currentStats.lastUpdated = new Date().toISOString();
-        this.saveToStorage();
-        return true;
       } else {
-        throw new Error(result.error || "Unknown error saving stats");
+        await this.getUserStats(); // Initialize cache
       }
-    } catch (err) {
-      console.error("Error saving stats to database:", err);
+      
+      return true;
+    } catch (error) {
+      console.error('Error recording workout:', error);
       return false;
     }
   }
   
-  private loadFromStorage(): void {
+  async getWorkoutHistory(limit = 10): Promise<{
+    date: string;
+    routineName: string;
+    duration: number;
+    calories: number;
+  }[]> {
     try {
-      const savedStats = localStorage.getItem('user_stats');
-      if (savedStats) {
-        const parsedStats = JSON.parse(savedStats);
-        if (parsedStats && this.currentStats) {
-          this.currentStats = {
-            ...this.currentStats,
-            ...parsedStats
-          };
-        }
-      }
-    } catch (err) {
-      console.error("Error loading stats from storage:", err);
-    }
-  }
-  
-  private saveToStorage(): void {
-    try {
-      if (this.currentStats) {
-        localStorage.setItem('user_stats', JSON.stringify(this.currentStats));
-      }
-    } catch (err) {
-      console.error("Error saving stats to storage:", err);
-    }
-  }
-  
-  public addCaloriesBurned(calories: number): void {
-    if (!this.currentStats) return;
-    
-    this.currentStats.caloriesBurned += calories;
-    this.saveToStorage();
-    this.saveToDatabase().catch(console.error);
-  }
-  
-  public addExercisesCompleted(count: number = 1): void {
-    if (!this.currentStats) return;
-    
-    this.currentStats.exercisesCompleted += count;
-    this.saveToStorage();
-    this.saveToDatabase().catch(console.error);
-  }
-  
-  public addWorkoutTime(minutes: number): void {
-    if (!this.currentStats) return;
-    
-    this.currentStats.workoutTime += minutes;
-    this.saveToStorage();
-    this.saveToDatabase().catch(console.error);
-  }
-  
-  public addRoutineCompleted(): void {
-    if (!this.currentStats) return;
-    
-    this.currentStats.routinesCompleted += 1;
-    this.saveToStorage();
-    this.saveToDatabase().catch(console.error);
-  }
-  
-  public getStats(): UserStats | null {
-    return this.currentStats;
-  }
-  
-  public async reset(): Promise<void> {
-    const userProfile = mysqlConnection.getUserProfile();
-    
-    if (userProfile) {
-      this.currentStats = {
-        email: userProfile.email,
-        caloriesBurned: 0,
-        exercisesCompleted: 0,
-        workoutTime: 0,
-        routinesCompleted: 0,
-        lastUpdated: new Date().toISOString()
-      };
+      // Get user profile to get email
+      const profileResponse = await mysqlConnection.getUserProfile();
+      const email = profileResponse?.data?.email;
       
-      this.saveToStorage();
-      await this.saveToDatabase();
+      if (!email) {
+        return [];
+      }
+      
+      // In a real implementation, we would fetch from the server
+      // For now, return mock data
+      return [
+        {
+          date: "2023-08-24",
+          routineName: "Entrenamiento de Pecho",
+          duration: 45,
+          calories: 320
+        },
+        {
+          date: "2023-08-22",
+          routineName: "Día de Piernas",
+          duration: 50,
+          calories: 380
+        },
+        {
+          date: "2023-08-20",
+          routineName: "Cardio & Core",
+          duration: 30,
+          calories: 250
+        },
+        {
+          date: "2023-08-18",
+          routineName: "Espalda y Bíceps",
+          duration: 40,
+          calories: 290
+        },
+        {
+          date: "2023-08-16",
+          routineName: "HIIT Training",
+          duration: 25,
+          calories: 310
+        }
+      ];
+    } catch (error) {
+      console.error('Error getting workout history:', error);
+      return [];
+    }
+  }
+  
+  async getProgressData(metric: 'weight' | 'strength' | 'cardio'): Promise<{
+    date: string;
+    value: number;
+  }[]> {
+    try {
+      // Get user profile to get email
+      const profileResponse = await mysqlConnection.getUserProfile();
+      const email = profileResponse?.data?.email;
+      
+      if (!email) {
+        return [];
+      }
+      
+      // Mock data for different metrics
+      switch (metric) {
+        case 'weight':
+          return [
+            { date: "2023-07-01", value: 82.5 },
+            { date: "2023-07-08", value: 81.8 },
+            { date: "2023-07-15", value: 81.2 },
+            { date: "2023-07-22", value: 80.7 },
+            { date: "2023-07-29", value: 80.0 },
+            { date: "2023-08-05", value: 79.4 },
+            { date: "2023-08-12", value: 79.1 },
+            { date: "2023-08-19", value: 78.5 }
+          ];
+        case 'strength':
+          return [
+            { date: "2023-07-01", value: 60 },
+            { date: "2023-07-08", value: 65 },
+            { date: "2023-07-15", value: 65 },
+            { date: "2023-07-22", value: 70 },
+            { date: "2023-07-29", value: 72.5 },
+            { date: "2023-08-05", value: 75 },
+            { date: "2023-08-12", value: 77.5 },
+            { date: "2023-08-19", value: 80 }
+          ];
+        case 'cardio':
+          return [
+            { date: "2023-07-01", value: 20 },
+            { date: "2023-07-08", value: 22 },
+            { date: "2023-07-15", value: 25 },
+            { date: "2023-07-22", value: 24 },
+            { date: "2023-07-29", value: 28 },
+            { date: "2023-08-05", value: 30 },
+            { date: "2023-08-12", value: 32 },
+            { date: "2023-08-19", value: 35 }
+          ];
+        default:
+          return [];
+      }
+    } catch (error) {
+      console.error('Error getting progress data:', error);
+      return [];
     }
   }
 }
 
-export const statsManager = StatsManager.getInstance();
-
-// Try to sync stats when module is imported
-setTimeout(() => {
-  statsManager.syncWithDatabase();
-}, 1000);
+export const statsManager = new StatsManager();

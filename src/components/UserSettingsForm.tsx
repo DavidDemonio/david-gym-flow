@@ -2,140 +2,189 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Loader2, User, Bell } from "lucide-react";
+import { Loader2, User, Bell, Mail } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { mysqlConnection } from "../utils/mysqlConnection";
+
+interface UserProfile {
+  email: string;
+  name: string;
+  notificationsEnabled: boolean;
+}
 
 export function UserSettingsForm() {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
-  
-  const [formData, setFormData] = useState({
+  const [userProfile, setUserProfile] = useState<UserProfile>({
     email: '',
     name: '',
     notificationsEnabled: true
   });
-
+  
   // Load user profile on mount
   useEffect(() => {
-    const profile = mysqlConnection.getUserProfile();
-    if (profile) {
-      setFormData({
-        email: profile.email || '',
-        name: profile.name || '',
-        notificationsEnabled: profile.notificationsEnabled !== false
-      });
-    }
+    loadUserProfile();
   }, []);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
-  };
-
-  const handleNotificationsChange = (checked: boolean) => {
-    setFormData({
-      ...formData,
-      notificationsEnabled: checked
-    });
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  
+  const loadUserProfile = async () => {
     setIsLoading(true);
-    
     try {
-      await mysqlConnection.setUserProfile(formData);
+      const response = await mysqlConnection.getUserProfile();
       
-      toast({
-        title: "Perfil guardado",
-        description: "La información de tu perfil ha sido actualizada.",
-      });
+      if (response.success && response.data) {
+        setUserProfile({
+          email: response.data.email || '',
+          name: response.data.name || '',
+          notificationsEnabled: response.data.notificationsEnabled !== false // Default to true if not specified
+        });
+      } else {
+        // If no profile exists yet, try to get the current logged in user
+        const currentUser = mysqlConnection.getCurrentUser?.();
+        if (currentUser) {
+          setUserProfile({
+            email: currentUser.email || '',
+            name: currentUser.name || '',
+            notificationsEnabled: true
+          });
+        }
+      }
     } catch (err) {
-      console.error('Error saving user profile:', err);
+      console.error('Error loading user profile:', err);
       toast({
         variant: "destructive",
-        title: "Error al guardar",
-        description: "No se pudo guardar la información del perfil."
+        title: "Error al cargar perfil",
+        description: "No se pudo cargar el perfil de usuario"
       });
     } finally {
       setIsLoading(false);
     }
   };
-
+  
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setUserProfile({
+      ...userProfile,
+      [e.target.name]: e.target.value
+    });
+  };
+  
+  const handleNotificationToggle = (checked: boolean) => {
+    setUserProfile({
+      ...userProfile,
+      notificationsEnabled: checked
+    });
+  };
+  
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsLoading(true);
+    
+    try {
+      const result = await mysqlConnection.setUserProfile(userProfile);
+      
+      if (result) {
+        toast({
+          title: "Perfil actualizado",
+          description: "Tu perfil ha sido actualizado correctamente",
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error al guardar",
+          description: "No se pudo actualizar el perfil"
+        });
+      }
+    } catch (err) {
+      console.error('Error saving user profile:', err);
+      toast({
+        variant: "destructive",
+        title: "Error al guardar",
+        description: "Ocurrió un error al guardar el perfil"
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+  
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle className="flex items-center">
-          <User className="mr-2 h-5 w-5" /> 
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
           Perfil de Usuario
         </CardTitle>
         <CardDescription>
-          Administra la información de tu perfil y las preferencias de notificación.
+          Actualiza tu información personal y preferencias
         </CardDescription>
       </CardHeader>
-      <CardContent>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
+      
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
             <Label htmlFor="email">Correo Electrónico</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder="usuario@ejemplo.com"
-              value={formData.email}
-              onChange={handleChange}
-              required
-            />
-            <p className="text-xs text-gray-500 mt-1">Se utilizará para enviar notificaciones y rutinas.</p>
+            <div className="relative">
+              <Mail className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="email"
+                name="email"
+                type="email"
+                placeholder="correo@ejemplo.com"
+                value={userProfile.email}
+                onChange={handleChange}
+                required
+                className="pl-10"
+              />
+            </div>
           </div>
           
-          <div>
+          <div className="space-y-2">
             <Label htmlFor="name">Nombre</Label>
-            <Input
-              id="name"
-              name="name"
-              placeholder="Tu nombre"
-              value={formData.name}
-              onChange={handleChange}
-            />
+            <div className="relative">
+              <User className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="name"
+                name="name"
+                placeholder="Tu Nombre"
+                value={userProfile.name}
+                onChange={handleChange}
+                className="pl-10"
+              />
+            </div>
           </div>
           
-          <div className="flex items-center space-x-2 pt-2">
-            <Switch 
-              id="notifications" 
-              checked={formData.notificationsEnabled} 
-              onCheckedChange={handleNotificationsChange} 
-            />
-            <Label htmlFor="notifications" className="flex items-center cursor-pointer">
-              <Bell className="mr-2 h-4 w-4" /> 
-              Habilitar notificaciones por correo
-            </Label>
+          <div className="space-y-2 pt-2">
+            <div className="flex items-center space-x-2">
+              <Switch 
+                id="notifications"
+                checked={userProfile.notificationsEnabled}
+                onCheckedChange={handleNotificationToggle}
+              />
+              <Label htmlFor="notifications" className="flex items-center cursor-pointer">
+                <Bell className="mr-2 h-4 w-4" />
+                Recibir notificaciones
+              </Label>
+            </div>
           </div>
-          
-          <CardFooter className="px-0 flex justify-end pt-4">
-            <Button 
-              type="submit" 
-              className="gradient-btn"
-              disabled={isLoading}
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...
-                </>
-              ) : (
-                'Guardar Perfil'
-              )}
-            </Button>
-          </CardFooter>
-        </form>
-      </CardContent>
+        </CardContent>
+        
+        <CardFooter className="flex justify-end">
+          <Button
+            type="submit"
+            className="gradient-btn"
+            disabled={isLoading}
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Guardando...
+              </>
+            ) : (
+              'Guardar Cambios'
+            )}
+          </Button>
+        </CardFooter>
+      </form>
     </Card>
   );
 }

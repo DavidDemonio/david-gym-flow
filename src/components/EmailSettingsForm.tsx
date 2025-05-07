@@ -8,7 +8,8 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2, Mail, Send, Check, AlertTriangle } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
-import { mysqlConnection, EmailConfig } from "../utils/mysqlConnection";
+import { mysqlConnection } from "../utils/mysqlConnection";
+import { EmailConfig } from "../services/MysqlService";
 
 export function EmailSettingsForm() {
   const { toast } = useToast();
@@ -18,42 +19,46 @@ export function EmailSettingsForm() {
   const [testEmail, setTestEmail] = useState('');
   
   const [formData, setFormData] = useState<EmailConfig>({
-    smtpHost: '',
-    smtpPort: 587,
-    smtpUser: '',
-    smtpPassword: '',
-    fromEmail: '',
+    host: '',
+    port: 587,
+    user: '',
+    password: '',
+    from: '',
     secure: false,
     secureType: 'TLS'
   });
 
   // Load values from MySQL connection on mount
   useEffect(() => {
-    const config = mysqlConnection.getEmailConfig();
-    if (config) {
-      setFormData({
-        smtpHost: config.smtpHost,
-        smtpPort: config.smtpPort,
-        smtpUser: config.smtpUser,
-        smtpPassword: config.smtpPassword,
-        fromEmail: config.fromEmail,
-        secure: config.secure,
-        secureType: config.secureType
-      });
-      
-      // If there's a user profile, use its email as test email
-      const userProfile = mysqlConnection.getUserProfile();
-      if (userProfile && userProfile.email) {
-        setTestEmail(userProfile.email);
+    const loadEmailConfig = async () => {
+      const config = mysqlConnection.getEmailConfig();
+      if (config) {
+        setFormData({
+          host: config.host,
+          port: config.port,
+          user: config.user,
+          password: config.password,
+          from: config.from,
+          secure: config.secure,
+          secureType: config.secureType
+        });
+        
+        // If there's a user profile, use its email as test email
+        const userProfile = await mysqlConnection.getUserProfile();
+        if (userProfile?.data?.email) {
+          setTestEmail(userProfile.data.email);
+        }
       }
-    }
+    };
+    
+    loadEmailConfig();
   }, []);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: name === 'smtpPort' ? parseInt(value) : value
+      [name]: name === 'port' ? parseInt(value) : value
     }));
   };
 
@@ -68,7 +73,7 @@ export function EmailSettingsForm() {
   const testEmailConnection = async () => {
     setIsTesting(true);
     try {
-      const result = await mysqlConnection.testEmailConfig();
+      const result = await mysqlConnection.testEmailConfig(formData);
       
       if (result.success) {
         toast({
@@ -129,8 +134,8 @@ export function EmailSettingsForm() {
           description: result.message,
         });
       }
-    } catch (err) {
-      console.error('Error sending test email:', err);
+    } catch (error) {
+      console.error('Error sending test email:', error);
       toast({
         variant: "destructive",
         title: "Error al enviar correo",
@@ -179,24 +184,24 @@ export function EmailSettingsForm() {
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <Label htmlFor="smtpHost">Servidor SMTP</Label>
+              <Label htmlFor="host">Servidor SMTP</Label>
               <Input
-                id="smtpHost"
-                name="smtpHost"
+                id="host"
+                name="host"
                 placeholder="smtp.gmail.com"
-                value={formData.smtpHost}
+                value={formData.host}
                 onChange={handleChange}
                 required
               />
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <Label htmlFor="smtpPort">Puerto</Label>
+              <Label htmlFor="port">Puerto</Label>
               <Input
-                id="smtpPort"
-                name="smtpPort"
+                id="port"
+                name="port"
                 type="number"
                 placeholder="587"
-                value={formData.smtpPort}
+                value={formData.port}
                 onChange={handleChange}
                 required
               />
@@ -205,24 +210,24 @@ export function EmailSettingsForm() {
           
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2 sm:col-span-1">
-              <Label htmlFor="smtpUser">Usuario SMTP</Label>
+              <Label htmlFor="user">Usuario SMTP</Label>
               <Input
-                id="smtpUser"
-                name="smtpUser"
+                id="user"
+                name="user"
                 placeholder="usuario@gmail.com"
-                value={formData.smtpUser}
+                value={formData.user}
                 onChange={handleChange}
                 required
               />
             </div>
             <div className="col-span-2 sm:col-span-1">
-              <Label htmlFor="smtpPassword">Contraseña SMTP</Label>
+              <Label htmlFor="password">Contraseña SMTP</Label>
               <Input
-                id="smtpPassword"
-                name="smtpPassword"
+                id="password"
+                name="password"
                 type="password"
                 placeholder="••••••••"
-                value={formData.smtpPassword}
+                value={formData.password}
                 onChange={handleChange}
                 required
               />
@@ -230,12 +235,12 @@ export function EmailSettingsForm() {
           </div>
           
           <div>
-            <Label htmlFor="fromEmail">Correo Electrónico de Origen</Label>
+            <Label htmlFor="from">Correo Electrónico de Origen</Label>
             <Input
-              id="fromEmail"
-              name="fromEmail"
+              id="from"
+              name="from"
               placeholder="nombre@ejemplo.com"
-              value={formData.fromEmail}
+              value={formData.from}
               onChange={handleChange}
               required
             />

@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -56,17 +55,17 @@ const App = () => {
     const loadConfigurations = async () => {
       try {
         // Try to load main database config
-        const mainDbConfig = MysqlService.getConfigFromLocalStorage(false);
+        const mainDbConfig = MysqlService.getConfigFromLocalStorage('main');
         if (mainDbConfig) {
           await mysqlConnection.setConfig(mainDbConfig);
         }
         
         // Try to load routines database config
-        const routinesDbConfig = MysqlService.getConfigFromLocalStorage(true);
+        const routinesDbConfig = MysqlService.getConfigFromLocalStorage('routines');
         if (routinesDbConfig) {
           await mysqlConnection.setRoutinesDbConfig(routinesDbConfig);
         }
-        
+
         // Try to load auth database config
         const authDbConfig = MysqlService.getConfigFromLocalStorage('auth');
         if (authDbConfig) {
@@ -76,12 +75,11 @@ const App = () => {
         // Initialize environment variables
         await envManager.initialize();
         
-        // Check if auth is required from environment
+        // Check if auth is required
         const env = await envManager.getAll();
-        const authRequiredSetting = env.AUTH_REQUIRED === 'true';
-        setAuthRequired(authRequiredSetting);
-        localStorage.setItem('AUTH_REQUIRED', String(authRequiredSetting));
-        
+        const authRequired = env.AUTH_REQUIRED === 'true';
+        setAuthRequired(authRequired);
+        localStorage.setItem('AUTH_REQUIRED', String(authRequired));
       } catch (err) {
         console.error('Error loading stored configurations:', err);
       }

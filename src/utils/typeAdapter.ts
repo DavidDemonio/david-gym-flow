@@ -1,5 +1,5 @@
 
-import { Exercise, Equipment, Routine, EmailConfig } from "./mysqlConnection";
+import { Exercise, Equipment, Routine } from "./mysqlConnection";
 
 /**
  * Type definitions to fix compatibility issues between components
@@ -8,13 +8,19 @@ import { Exercise, Equipment, Routine, EmailConfig } from "./mysqlConnection";
 export interface ExerciseCardProps {
   exercise: Exercise;
   onClick: () => void;
-  className?: string; // Add this to fix ExerciseCard props type error
+  className?: string;
 }
 
 export interface EquipmentCardProps {
   equipment: Equipment;
   onClick: () => void;
-  className?: string; // Add this to fix EquipmentCard props type error
+  className?: string;
+}
+
+export interface CreateWeeklyRoutineDialogProps {
+  exercises: Exercise[];
+  open: boolean;
+  onClose: () => void;
 }
 
 export interface RoutineWithStatus extends Routine {

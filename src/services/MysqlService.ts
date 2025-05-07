@@ -1,4 +1,3 @@
-
 import { envManager } from '../utils/envManager';
 import { jsPDF } from 'jspdf';
 import html2canvas from 'html2canvas';
@@ -12,11 +11,11 @@ interface DbConfig {
 }
 
 export interface EmailConfig {
-  host: string;
+  host: string;  // Changed from smtpHost
   port: number;
-  user: string;
-  password: string;
-  from: string;
+  user: string;  // Changed from smtpUser
+  password: string;  // Changed from smtpPassword
+  from: string;  // Changed from fromEmail
   secure: boolean;
   secureType: string;
 }
@@ -231,7 +230,7 @@ class MysqlService {
   /**
    * Get configuration from localStorage
    */
-  getConfigFromLocalStorage(configType: 'main' | 'routines' | 'auth' = 'main'): DbConfig | null {
+  getConfigFromLocalStorage(configType: 'main' | 'routines' | 'auth'): DbConfig | null {
     let key;
     switch(configType) {
       case 'routines':
