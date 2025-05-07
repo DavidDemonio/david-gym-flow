@@ -1,12 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell, Plus, Info, Play, History, Database } from 'lucide-react';
+import { Activity, Download, Calendar, Clock, BarChart3, Dumbbell, Plus, Info, Play, History, Database, Edit, Trash2, Check, X } from 'lucide-react';
 import { useToast } from '../hooks/use-toast';
+import { toast } from '../hooks/use-toast';
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 import ExerciseAnalytics from '../components/ExerciseAnalytics';
 import WorkoutTimer, { WorkoutStats } from '../components/WorkoutTimer';
 import { mysqlConnection, Routine, Exercise } from '../utils/mysqlConnection';
 import PdfService from '../services/PdfService';
+
+// Status types for routines
+type RoutineStatus = 'pending' | 'in-progress' | 'completed';
 
 // Mock data para ejercicios
 const mockExercises = {
@@ -67,6 +75,7 @@ interface WeeklyRoutine {
   dayNames: string[];
   focusAreas: Record<string, string>;
   exercises: Record<string, any[]>;
+  status?: RoutineStatus;
 }
 
 interface WorkoutHistory {
@@ -89,6 +98,12 @@ const MiRutina = () => {
   const [databaseConnected, setDatabaseConnected] = useState(false);
   const [savedRoutines, setSavedRoutines] = useState<Routine[]>([]);
   const [selectedRoutineId, setSelectedRoutineId] = useState<number | null>(null);
+  const [isEditingName, setIsEditingName] = useState(false);
+  const [newRoutineName, setNewRoutineName] = useState('');
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
+  const [routineToDelete, setRoutineToDelete] = useState<number | null>(null);
+  const [statusDropdownOpen, setStatusDropdownOpen] = useState(false);
+  const nameInputRef = useRef<HTMLInputElement>(null);
   
   // Intentar obtener datos del formulario o usar valores por defecto
   const formData = location.state?.formData || {
@@ -105,26 +120,26 @@ const MiRutina = () => {
     
     if (isConnected) {
       // Cargar rutinas guardadas en la base de datos
-      const loadSavedRoutines = async () => {
-        try {
-          const routines = await mysqlConnection.getRoutines();
-          if (routines && routines.length > 0) {
-            setSavedRoutines(routines);
-            console.log("Rutinas cargadas desde MySQL:", routines.length);
-            
-            // Si hay rutinas y ninguna seleccionada, seleccionar la primera
-            if (!selectedRoutineId && routines.length > 0) {
-              setSelectedRoutineId(routines[0].id);
-            }
-          }
-        } catch (err) {
-          console.error("Error al cargar rutinas desde MySQL:", err);
-        }
-      };
-      
       loadSavedRoutines();
     }
   }, []);
+  
+  const loadSavedRoutines = async () => {
+    try {
+      const routines = await mysqlConnection.getRoutines();
+      if (routines && routines.length > 0) {
+        setSavedRoutines(routines);
+        console.log("Rutinas cargadas desde MySQL:", routines.length);
+        
+        // Si hay rutinas y ninguna seleccionada, seleccionar la primera
+        if (!selectedRoutineId && routines.length > 0) {
+          setSelectedRoutineId(routines[0].id);
+        }
+      }
+    } catch (err) {
+      console.error("Error al cargar rutinas desde MySQL:", err);
+    }
+  };
   
   // Verificar si hay una rutina semanal en localStorage al cargar
   useEffect(() => {
@@ -144,41 +159,7 @@ const MiRutina = () => {
       // Encontrar la rutina seleccionada
       const selectedRoutine = savedRoutines.find(r => r.id === selectedRoutineId);
       if (selectedRoutine) {
-        // Convertir la rutina de la base de datos al formato necesario para la interfaz
-        const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-        const selectedDays = weekDays.slice(0, selectedRoutine.dias);
-        
-        // Crear objeto de enfoque por día
-        const focusAreas: Record<string, string> = {};
-        Object.keys(selectedRoutine.exercises).forEach((day, index) => {
-          const dayNumber = (index + 1).toString();
-          const exercises = selectedRoutine.exercises[day];
-          // Detectar el enfoque basado en los grupos musculares más frecuentes
-          const muscleGroups = exercises.flatMap(ex => ex.muscleGroups);
-          
-          if (muscleGroups.includes("Pecho") && muscleGroups.includes("Tríceps")) {
-            focusAreas[dayNumber] = "Pecho y Tríceps";
-          } else if (muscleGroups.includes("Espalda") && muscleGroups.includes("Bíceps")) {
-            focusAreas[dayNumber] = "Espalda y Bíceps";
-          } else if (muscleGroups.includes("Piernas") || muscleGroups.includes("Cuádriceps")) {
-            focusAreas[dayNumber] = "Piernas y Hombros";
-          } else if (muscleGroups.includes("Core") || muscleGroups.includes("Abdominales")) {
-            focusAreas[dayNumber] = "Core y Cardio";
-          } else {
-            focusAreas[dayNumber] = "Full Body";
-          }
-        });
-        
-        // Crear rutina semanal
-        const routineData: WeeklyRoutine = {
-          name: selectedRoutine.name,
-          days: selectedRoutine.dias,
-          dayNames: selectedDays,
-          focusAreas: focusAreas,
-          exercises: selectedRoutine.exercises
-        };
-        
-        setWeeklyRoutine(routineData);
+        convertRoutineToWeeklyFormat(selectedRoutine);
       }
     }
     
@@ -193,10 +174,50 @@ const MiRutina = () => {
     }
   }, [location, savedRoutines, selectedRoutineId, databaseConnected]);
   
-  // Obtener rutina basada en los datos del formulario
-  const rutina = mockExercises[formData.objetivo]?.[formData.nivel]?.[formData.equipamiento] || [];
+  // Convertir rutina de la base de datos al formato necesario para la interfaz
+  const convertRoutineToWeeklyFormat = (selectedRoutine: Routine) => {
+    const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
+    const selectedDays = weekDays.slice(0, selectedRoutine.dias);
+    
+    // Crear objeto de enfoque por día
+    const focusAreas: Record<string, string> = {};
+    Object.keys(selectedRoutine.exercises).forEach((day, index) => {
+      const dayNumber = (index + 1).toString();
+      const exercises = selectedRoutine.exercises[day];
+      // Detectar el enfoque basado en los grupos musculares más frecuentes
+      const muscleGroups = exercises.flatMap(ex => ex.muscleGroups || []);
+      
+      if (muscleGroups.includes("Pecho") && muscleGroups.includes("Tríceps")) {
+        focusAreas[dayNumber] = "Pecho y Tríceps";
+      } else if (muscleGroups.includes("Espalda") && muscleGroups.includes("Bíceps")) {
+        focusAreas[dayNumber] = "Espalda y Bíceps";
+      } else if (muscleGroups.includes("Piernas") || muscleGroups.includes("Cuádriceps")) {
+        focusAreas[dayNumber] = "Piernas y Hombros";
+      } else if (muscleGroups.includes("Core") || muscleGroups.includes("Abdominales")) {
+        focusAreas[dayNumber] = "Core y Cardio";
+      } else {
+        focusAreas[dayNumber] = "Full Body";
+      }
+    });
+    
+    // Crear rutina semanal
+    const routineData: WeeklyRoutine = {
+      name: selectedRoutine.name,
+      days: selectedRoutine.dias,
+      dayNames: selectedDays,
+      focusAreas: focusAreas,
+      exercises: selectedRoutine.exercises,
+      status: selectedRoutine.status as RoutineStatus || 'pending'
+    };
+    
+    setWeeklyRoutine(routineData);
+  };
   
-  // Manejar la descarga de la rutina
+  // Obtener rutina basada en los datos del formulario
+  const rutina = location.state?.formData ? 
+    (mockExercises[location.state.formData.objetivo]?.[location.state.formData.nivel]?.[location.state.formData.equipamiento] || []) : [];
+  
+  // Manejar la descarga de la rutina en PDF
   const handleDownload = async () => {
     toast({
       title: "Generando PDF...",
@@ -207,7 +228,7 @@ const MiRutina = () => {
       // Determinar qué datos de rutina usar
       const routineData = weeklyRoutine || {
         name: "Mi Rutina Personalizada",
-        days: formData.dias,
+        days: location.state?.formData?.dias || 3,
         dayNames: rutina.map(day => day.day),
         focusAreas: Object.fromEntries(
           rutina.map((day, index) => [(index + 1).toString(), day.focus])
@@ -217,7 +238,6 @@ const MiRutina = () => {
         )
       };
       
-      // Generate and download PDF using our service
       await PdfService.generateRoutinePDF(routineData);
       
       toast({
@@ -263,6 +283,11 @@ const MiRutina = () => {
     setWorkoutHistory(updatedHistory);
     localStorage.setItem('workoutHistory', JSON.stringify(updatedHistory));
     
+    // Si hay una rutina activa y está "in-progress", actualizar su estado a "completed"
+    if (weeklyRoutine && weeklyRoutine.status === 'in-progress' && selectedRoutineId) {
+      updateRoutineStatus(selectedRoutineId, 'completed');
+    }
+    
     setLiveWorkoutActive(false);
     setShowAnalytics(true);
   };
@@ -278,28 +303,198 @@ const MiRutina = () => {
     // Encontrar la rutina seleccionada
     const selectedRoutine = savedRoutines.find(r => r.id === routineId);
     if (selectedRoutine) {
-      // Convertir la rutina de la base de datos al formato necesario para la interfaz
-      const weekDays = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado", "Domingo"];
-      const selectedDays = weekDays.slice(0, selectedRoutine.dias);
+      convertRoutineToWeeklyFormat(selectedRoutine);
+      setActiveDay(0);
+    }
+  };
+  
+  // Actualizar el nombre de una rutina
+  const handleStartEditName = () => {
+    if (weeklyRoutine) {
+      setNewRoutineName(weeklyRoutine.name);
+      setIsEditingName(true);
+      // Focus the input after it appears
+      setTimeout(() => {
+        if (nameInputRef.current) {
+          nameInputRef.current.focus();
+        }
+      }, 10);
+    }
+  };
+  
+  // Guardar el nuevo nombre de la rutina
+  const handleSaveRoutineName = async () => {
+    if (!selectedRoutineId || !newRoutineName.trim()) {
+      setIsEditingName(false);
+      return;
+    }
+    
+    try {
+      await mysqlConnection.updateRoutineName(selectedRoutineId, newRoutineName.trim());
       
-      // Crear objeto de enfoque por día
-      const focusAreas: Record<string, string> = {};
-      Object.keys(selectedRoutine.exercises).forEach((day, index) => {
-        const dayNumber = (index + 1).toString();
-        focusAreas[dayNumber] = `Día ${index + 1}`;
+      // Update local state
+      setSavedRoutines(prev => 
+        prev.map(routine => 
+          routine.id === selectedRoutineId ? { ...routine, name: newRoutineName.trim() } : routine
+        )
+      );
+      
+      // Update weekly routine
+      if (weeklyRoutine) {
+        setWeeklyRoutine({ ...weeklyRoutine, name: newRoutineName.trim() });
+      }
+      
+      toast({
+        title: "Nombre actualizado",
+        description: "El nombre de la rutina ha sido actualizado con éxito",
       });
       
-      // Crear rutina semanal
-      const routineData: WeeklyRoutine = {
-        name: selectedRoutine.name,
-        days: selectedRoutine.dias,
-        dayNames: selectedDays,
-        focusAreas: focusAreas,
-        exercises: selectedRoutine.exercises
+      // Notify via email
+      try {
+        await fetch('/api/email/notify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subject: "Rutina Actualizada",
+            text: `La rutina "${newRoutineName}" ha sido renombrada en tu perfil de David GymFlow.`,
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending email notification:', error);
+      }
+    } catch (error) {
+      console.error('Error updating routine name:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el nombre de la rutina",
+      });
+    }
+    
+    setIsEditingName(false);
+  };
+  
+  // Abrir diálogo de confirmación para eliminar rutina
+  const handleConfirmDelete = (routineId: number) => {
+    setRoutineToDelete(routineId);
+    setShowDeleteDialog(true);
+  };
+  
+  // Eliminar rutina
+  const handleDeleteRoutine = async () => {
+    if (!routineToDelete) {
+      setShowDeleteDialog(false);
+      return;
+    }
+    
+    try {
+      // Get the name before deletion for the notification
+      const routineName = savedRoutines.find(r => r.id === routineToDelete)?.name || "Rutina";
+      
+      await mysqlConnection.deleteRoutine(routineToDelete);
+      
+      // Update local state
+      setSavedRoutines(prev => prev.filter(routine => routine.id !== routineToDelete));
+      
+      // If the deleted routine was selected, select another one or set to null
+      if (selectedRoutineId === routineToDelete) {
+        const remainingRoutines = savedRoutines.filter(r => r.id !== routineToDelete);
+        if (remainingRoutines.length > 0) {
+          setSelectedRoutineId(remainingRoutines[0].id);
+          convertRoutineToWeeklyFormat(remainingRoutines[0]);
+        } else {
+          setSelectedRoutineId(null);
+          setWeeklyRoutine(null);
+        }
+      }
+      
+      toast({
+        title: "Rutina eliminada",
+        description: "La rutina ha sido eliminada con éxito",
+      });
+      
+      // Notify via email
+      try {
+        await fetch('/api/email/notify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subject: "Rutina Eliminada",
+            text: `La rutina "${routineName}" ha sido eliminada de tu perfil de David GymFlow.`,
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending email notification:', error);
+      }
+    } catch (error) {
+      console.error('Error deleting routine:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo eliminar la rutina",
+      });
+    }
+    
+    setShowDeleteDialog(false);
+    setRoutineToDelete(null);
+  };
+  
+  // Actualizar el estado de una rutina
+  const updateRoutineStatus = async (routineId: number, status: RoutineStatus) => {
+    try {
+      await mysqlConnection.updateRoutineStatus(routineId, status);
+      
+      // Update local state
+      setSavedRoutines(prev => 
+        prev.map(routine => 
+          routine.id === routineId ? { ...routine, status } : routine
+        )
+      );
+      
+      // Update weekly routine
+      if (weeklyRoutine) {
+        setWeeklyRoutine({ ...weeklyRoutine, status });
+      }
+      
+      const statusMessages = {
+        'pending': 'pendiente',
+        'in-progress': 'en progreso',
+        'completed': 'completada'
       };
       
-      setWeeklyRoutine(routineData);
-      setActiveDay(0);
+      toast({
+        title: "Estado actualizado",
+        description: `La rutina ahora está ${statusMessages[status]}`,
+      });
+      
+      // Notify via email
+      try {
+        const routineName = savedRoutines.find(r => r.id === routineId)?.name || "Rutina";
+        
+        await fetch('/api/email/notify', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            subject: "Estado de Rutina Actualizado",
+            text: `La rutina "${routineName}" ahora está ${statusMessages[status]} en tu perfil de David GymFlow.`,
+          }),
+        });
+      } catch (error) {
+        console.error('Error sending email notification:', error);
+      }
+    } catch (error) {
+      console.error('Error updating routine status:', error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo actualizar el estado de la rutina",
+      });
     }
   };
   
@@ -363,39 +558,131 @@ const MiRutina = () => {
     );
   }
   
+  // Renderizar badge según el estado de la rutina
+  const renderStatusBadge = (status: RoutineStatus | undefined) => {
+    switch(status) {
+      case 'pending':
+        return <Badge variant="outline" className="bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-900/50">Pendiente</Badge>;
+      case 'in-progress':
+        return <Badge variant="outline" className="bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-900/50">En progreso</Badge>;
+      case 'completed':
+        return <Badge variant="outline" className="bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300 hover:bg-green-200 dark:hover:bg-green-900/50">Completada</Badge>;
+      default:
+        return null;
+    }
+  };
+  
   // Si hay una rutina semanal, mostrarla
   if (weeklyRoutine) {
     return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+      <div className="container mx-auto px-4 py-8 animate-fade-in">
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
           <div className="flex flex-col">
-            <h1 className="text-3xl font-bold gradient-text flex items-center">
-              <Calendar className="mr-3 h-7 w-7" />
-              {weeklyRoutine.name || "Mi Rutina Semanal"}
-            </h1>
-            
-            {/* Mostrar selector de rutinas si hay rutinas en la base de datos */}
-            {databaseConnected && savedRoutines.length > 0 && (
-              <div className="flex items-center mt-2">
-                <span className="text-sm text-gray-500 dark:text-gray-400 mr-2">Rutinas guardadas:</span>
-                <select 
-                  className="text-sm border rounded p-1 bg-background dark:bg-gray-800" 
-                  value={selectedRoutineId || ''}
-                  onChange={(e) => handleSelectRoutine(Number(e.target.value))}
-                >
-                  {savedRoutines.map(routine => (
-                    <option key={routine.id} value={routine.id}>{routine.name}</option>
-                  ))}
-                </select>
-                <div className="ml-2 text-xs text-green-600 dark:text-green-400 flex items-center">
-                  <Database className="h-3 w-3 mr-1" />
-                  MySQL
+            <div className="flex items-center gap-3">
+              <Calendar className="h-7 w-7 text-purple-500 dark:text-purple-400" />
+              
+              {isEditingName ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    ref={nameInputRef}
+                    value={newRoutineName}
+                    onChange={(e) => setNewRoutineName(e.target.value)}
+                    className="py-1 text-lg font-bold w-[250px]"
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter') {
+                        handleSaveRoutineName();
+                      } else if (e.key === 'Escape') {
+                        setIsEditingName(false);
+                      }
+                    }}
+                  />
+                  <Button size="sm" variant="ghost" onClick={handleSaveRoutineName} className="w-8 h-8 p-0">
+                    <Check className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  </Button>
+                  <Button size="sm" variant="ghost" onClick={() => setIsEditingName(false)} className="w-8 h-8 p-0">
+                    <X className="h-4 w-4 text-red-600 dark:text-red-400" />
+                  </Button>
                 </div>
-              </div>
-            )}
+              ) : (
+                <h1 className="text-3xl font-bold gradient-text flex items-center">
+                  {weeklyRoutine.name || "Mi Rutina Semanal"}
+                  <Button 
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleStartEditName}
+                    className="ml-2 opacity-50 hover:opacity-100"
+                  >
+                    <Edit className="h-4 w-4" />
+                  </Button>
+                </h1>
+              )}
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-3 mt-2">
+              {/* Status dropdown */}
+              {selectedRoutineId && (
+                <DropdownMenu open={statusDropdownOpen} onOpenChange={setStatusDropdownOpen}>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="h-8 p-2 gap-1 text-sm">
+                      {renderStatusBadge(weeklyRoutine.status)}
+                      <span className="sr-only">Cambiar estado</span>
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start">
+                    <DropdownMenuItem 
+                      onClick={() => updateRoutineStatus(selectedRoutineId, 'pending')}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Badge variant="outline" className="bg-amber-100 text-amber-800">Pendiente</Badge>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => updateRoutineStatus(selectedRoutineId, 'in-progress')}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Badge variant="outline" className="bg-blue-100 text-blue-800">En progreso</Badge>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem 
+                      onClick={() => updateRoutineStatus(selectedRoutineId, 'completed')}
+                      className="flex items-center gap-2 cursor-pointer"
+                    >
+                      <Badge variant="outline" className="bg-green-100 text-green-800">Completada</Badge>
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              )}
+              
+              {/* Saved routines selector */}
+              {databaseConnected && savedRoutines.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <select 
+                    className="text-sm border rounded p-1 bg-background dark:bg-gray-800 h-8" 
+                    value={selectedRoutineId || ''}
+                    onChange={(e) => handleSelectRoutine(Number(e.target.value))}
+                  >
+                    {savedRoutines.map(routine => (
+                      <option key={routine.id} value={routine.id}>{routine.name}</option>
+                    ))}
+                  </select>
+                  {selectedRoutineId && (
+                    <Button 
+                      variant="ghost" 
+                      size="sm"
+                      onClick={() => handleConfirmDelete(selectedRoutineId)}
+                      className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 w-8 h-8 p-0"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                  <div className="ml-1 text-xs text-green-600 dark:text-green-400 flex items-center">
+                    <Database className="h-3 w-3 mr-1" />
+                    MySQL
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
           
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-3">
             <Button 
               onClick={toggleAnalytics}
               variant={showAnalytics ? "default" : "outline"}
@@ -439,7 +726,7 @@ const MiRutina = () => {
                 key={index}
                 className={`px-4 py-2 rounded-full transition-all whitespace-nowrap flex items-center gap-1 animate-fade-in ${
                   activeDay === index 
-                    ? 'bg-purple-600 text-white dark:bg-purple-500' 
+                    ? 'bg-purple-600 text-white dark:bg-purple-500 transform scale-105' 
                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700'
                 } hover:scale-105`}
                 style={{animationDelay: `${index * 75}ms`}}
@@ -467,7 +754,7 @@ const MiRutina = () => {
                 {weeklyRoutine.exercises[weeklyRoutine.dayNames[activeDay]]?.length > 0 && (
                   <Button 
                     onClick={startLiveWorkout}
-                    className="bg-green-600 hover:bg-green-700 text-white"
+                    className="bg-green-600 hover:bg-green-700 text-white dark:bg-green-700 dark:hover:bg-green-600"
                   >
                     <Play className="mr-2 h-4 w-4" />
                     Iniciar entrenamiento
@@ -493,11 +780,11 @@ const MiRutina = () => {
                   style={{animationDelay: `${index * 150}ms`}}
                 >
                   <div className="flex items-center mb-2">
-                    <span className="text-2xl mr-2">{exercise.emoji}</span>
+                    <span className="text-2xl mr-2">{exercise.emoji || "💪"}</span>
                     <h3 className="font-semibold text-lg">{exercise.name}</h3>
                   </div>
                   
-                  <div className="grid grid-cols-4 gap-4 mb-3">
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-3">
                     <div>
                       <p className="text-xs text-gray-500 dark:text-gray-400">Series</p>
                       <p className="font-medium">{exercise.sets || 3}</p>
@@ -519,10 +806,12 @@ const MiRutina = () => {
                     </div>
                   </div>
                   
-                  <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md text-sm text-blue-700 dark:text-blue-300 flex">
-                    <Info className="text-blue-500 dark:text-blue-400 h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
-                    <p>{exercise.description}</p>
-                  </div>
+                  {exercise.description && (
+                    <div className="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-md text-sm text-blue-700 dark:text-blue-300 flex">
+                      <Info className="text-blue-500 dark:text-blue-400 h-4 w-4 mr-2 flex-shrink-0 mt-0.5" />
+                      <p>{exercise.description}</p>
+                    </div>
+                  )}
                 </div>
               ))}
 
@@ -542,11 +831,27 @@ const MiRutina = () => {
             </div>
           </div>
         )}
+        
+        {/* Delete confirmation dialog */}
+        <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Eliminar rutina</DialogTitle>
+              <DialogDescription>
+                ¿Estás seguro de que deseas eliminar esta rutina? Esta acción no se puede deshacer.
+              </DialogDescription>
+            </DialogHeader>
+            <DialogFooter className="flex space-x-2 sm:space-x-0 sm:justify-end">
+              <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>Cancelar</Button>
+              <Button variant="destructive" onClick={handleDeleteRoutine}>Eliminar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
   
-  // Si no hay rutina disponible
+  // Si no hay rutina disponible o si no hay rutina semanal, mostrar alternativas
   if (rutina.length === 0) {
     return (
       <div className="container mx-auto px-4 py-12 text-center">

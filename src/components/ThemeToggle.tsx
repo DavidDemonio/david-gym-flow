@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, SunMoon } from 'lucide-react';
 import { Toggle } from '@/components/ui/toggle';
 
 const ThemeToggle = () => {
@@ -10,10 +10,13 @@ const ThemeToggle = () => {
     }
     return false;
   });
+  const [isHovering, setIsHovering] = useState(false);
+  const [isTransitioning, setIsTransitioning] = useState(false);
 
   useEffect(() => {
     // Add transition class to body for smooth theme transitions
     document.body.classList.add('theme-transition');
+    setIsTransitioning(true);
     
     const root = document.documentElement;
     
@@ -28,7 +31,8 @@ const ThemeToggle = () => {
     // Remove transition class after theme change to prevent transitions during page load
     const timer = setTimeout(() => {
       document.body.classList.remove('theme-transition');
-    }, 1000); // Increased transition time for smoother effect
+      setIsTransitioning(false);
+    }, 1200); // Increased transition time for smoother effect
     
     return () => clearTimeout(timer);
   }, [isDark]);
@@ -58,6 +62,15 @@ const ThemeToggle = () => {
                     color 0.7s cubic-bezier(0.16, 1, 0.3, 1) !important;
       }
       
+      /* Add advanced animations */
+      .theme-icon-rotate {
+        transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+      }
+      
+      .theme-icon-rotate:hover {
+        transform: rotate(45deg) scale(1.1) !important;
+      }
+      
       /* Ensure dropdown menus are visible in all modes */
       [data-radix-popper-content-wrapper] {
         z-index: 50 !important;
@@ -80,6 +93,39 @@ const ThemeToggle = () => {
       .dark [data-radix-dropdown-menu-item]:hover {
         background-color: hsl(229 23% 19%) !important;
       }
+      
+      /* Improved button styles for dark mode */
+      .dark button.bg-gray-100,
+      .dark button.bg-gray-200,
+      .dark button.bg-gray-300 {
+        background-color: hsl(215 25% 27%) !important;
+        color: hsl(210 40% 98%) !important;
+        border-color: hsl(215 25% 32%) !important;
+      }
+      
+      .dark button.bg-white {
+        background-color: hsl(228 20% 13%) !important;
+        color: hsl(210 40% 98%) !important;
+      }
+      
+      /* Animation for theme toggle */
+      @keyframes sunAnimation {
+        0% { transform: scale(0.8) rotate(0deg); opacity: 0.5; }
+        100% { transform: scale(1) rotate(360deg); opacity: 1; }
+      }
+      
+      @keyframes moonAnimation {
+        0% { transform: scale(0.8) rotate(0deg); opacity: 0.5; }
+        100% { transform: scale(1) rotate(-360deg); opacity: 1; }
+      }
+      
+      .sun-animation {
+        animation: sunAnimation 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
+      
+      .moon-animation {
+        animation: moonAnimation 1s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+      }
     `;
     document.head.appendChild(style);
     
@@ -97,12 +143,24 @@ const ThemeToggle = () => {
       pressed={isDark} 
       onPressedChange={() => setIsDark(!isDark)}
       aria-label="Cambiar tema"
-      className="w-10 h-10 rounded-full transition-all duration-500"
+      className={`w-10 h-10 rounded-full transition-all duration-500 ${
+        isDark ? 'bg-indigo-900/30 hover:bg-indigo-800/50' : 'bg-amber-100/50 hover:bg-amber-200/70'
+      }`}
+      onMouseEnter={() => setIsHovering(true)}
+      onMouseLeave={() => setIsHovering(false)}
     >
-      {isDark ? 
-        <Moon className="h-5 w-5 transition-transform duration-700 rotate-0" /> : 
-        <Sun className="h-5 w-5 transition-transform duration-700 rotate-90" />
-      }
+      {!isTransitioning && (
+        <>
+          {isDark ? (
+            <Moon className={`h-5 w-5 transition-all duration-700 ${isHovering ? 'theme-icon-rotate' : 'moon-animation'}`} />
+          ) : (
+            <Sun className={`h-5 w-5 transition-all duration-700 ${isHovering ? 'theme-icon-rotate' : 'sun-animation'}`} />
+          )}
+        </>
+      )}
+      {isTransitioning && (
+        <SunMoon className="h-5 w-5 animate-pulse" />
+      )}
     </Toggle>
   );
 };

@@ -61,6 +61,11 @@ class MysqlService {
       
       const result = await response.json();
       
+      // If successful, save configuration to local storage for persistence
+      if (result.success) {
+        localStorage.setItem('routinesDbConfig', JSON.stringify(config));
+      }
+      
       return { 
         success: result.success, 
         message: result.message || (result.success ? 'Database initialized' : 'Initialization failed') 
@@ -94,7 +99,11 @@ class MysqlService {
       
       if (result.success && result.env) {
         // Update local environment manager
-        await envManager.updateVariables(result.env);
+        await envManager.setAll(result.env);
+        
+        // Store in localStorage for persistence across refreshes
+        localStorage.setItem('envVariables', JSON.stringify(result.env));
+        
         return result.env;
       } else {
         throw new Error('Could not load environment variables');
@@ -107,27 +116,40 @@ class MysqlService {
 
   /**
    * Generate PDF routine from routine data
+   * This method now uses the client-side PdfService directly
    */
-  async generateRoutinePDF(routineData: any): Promise<Blob> {
+  async generateRoutinePDF(routineData: any): Promise<void> {
+    const PdfService = (await import('../services/PdfService')).default;
     try {
-      const response = await fetch('/api/pdf/generate-routine', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(routineData),
-      });
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-      
-      // Return the PDF blob
-      return await response.blob();
+      return await PdfService.generateRoutinePDF(routineData);
     } catch (error) {
       console.error('Error generating PDF:', error);
       throw error;
     }
+  }
+  
+  /**
+   * Save configuration to localStorage for persistence
+   */
+  saveConfigToLocalStorage(config: DbConfig, isRoutinesDb: boolean = false): void {
+    const key = isRoutinesDb ? 'routinesDbConfig' : 'mainDbConfig';
+    localStorage.setItem(key, JSON.stringify(config));
+  }
+  
+  /**
+   * Get configuration from localStorage
+   */
+  getConfigFromLocalStorage(isRoutinesDb: boolean = false): DbConfig | null {
+    const key = isRoutinesDb ? 'routinesDbConfig' : 'mainDbConfig';
+    const stored = localStorage.getItem(key);
+    if (stored) {
+      try {
+        return JSON.parse(stored);
+      } catch (error) {
+        console.error('Error parsing stored database config:', error);
+      }
+    }
+    return null;
   }
 }
 

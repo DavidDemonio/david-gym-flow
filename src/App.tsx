@@ -6,6 +6,9 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/use-mobile";
+import MysqlService from "./services/MysqlService";
+import { mysqlConnection } from "./utils/mysqlConnection";
+import { envManager } from "./utils/envManager";
 
 // Page Imports
 import Home from "./pages/Home";
@@ -32,6 +35,33 @@ const App = () => {
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
   
+  // Load stored database configs and environment variables on startup
+  useEffect(() => {
+    const loadConfigurations = async () => {
+      try {
+        // Try to load main database config
+        const mainDbConfig = MysqlService.getConfigFromLocalStorage(false);
+        if (mainDbConfig) {
+          await mysqlConnection.setConfig(mainDbConfig);
+        }
+        
+        // Try to load routines database config
+        const routinesDbConfig = MysqlService.getConfigFromLocalStorage(true);
+        if (routinesDbConfig) {
+          await mysqlConnection.setRoutinesDbConfig(routinesDbConfig);
+        }
+        
+        // Initialize environment variables
+        await envManager.initialize();
+        
+      } catch (err) {
+        console.error('Error loading stored configurations:', err);
+      }
+    };
+    
+    loadConfigurations();
+  }, []);
+  
   useEffect(() => {
     // Initialize theme from localStorage
     const savedTheme = localStorage.getItem('theme');
@@ -42,6 +72,131 @@ const App = () => {
     } else {
       document.documentElement.classList.remove('dark');
     }
+    
+    // Add animation styles
+    const style = document.createElement('style');
+    style.innerHTML = `
+      /* Advanced animations */
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      
+      @keyframes fadeInRight {
+        from {
+          opacity: 0;
+          transform: translateX(-20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateX(0);
+        }
+      }
+      
+      @keyframes pulse {
+        0%, 100% {
+          opacity: 1;
+        }
+        50% {
+          opacity: 0.7;
+        }
+      }
+      
+      .animate-fadeInUp {
+        animation: fadeInUp 0.6s ease-out forwards;
+      }
+      
+      .animate-fadeInRight {
+        animation: fadeInRight 0.6s ease-out forwards;
+      }
+      
+      .animate-pulse {
+        animation: pulse 2s infinite;
+      }
+      
+      .animate-delay-100 {
+        animation-delay: 100ms;
+      }
+      
+      .animate-delay-200 {
+        animation-delay: 200ms;
+      }
+      
+      .animate-delay-300 {
+        animation-delay: 300ms;
+      }
+      
+      /* Glass card styling */
+      .glass-card {
+        background: rgba(255, 255, 255, 0.7);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+      }
+      
+      .dark .glass-card {
+        background: rgba(30, 30, 40, 0.7);
+        border: 1px solid rgba(60, 60, 80, 0.2);
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+      }
+      
+      /* Gradient button */
+      .gradient-btn {
+        background: linear-gradient(135deg, #6027c5, #8a56e8);
+        color: white;
+        border: none;
+        border-radius: 0.375rem;
+        display: inline-flex;
+        align-items: center;
+        font-weight: 500;
+        transition: all 0.3s ease;
+      }
+      
+      .gradient-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(96, 39, 197, 0.3);
+        background: linear-gradient(135deg, #6f30e6, #9866f0);
+      }
+      
+      .dark .gradient-btn {
+        background: linear-gradient(135deg, #7037d5, #9a66f8);
+        box-shadow: 0 4px 12px rgba(106, 49, 207, 0.2);
+      }
+      
+      .dark .gradient-btn:hover {
+        background: linear-gradient(135deg, #7f40e6, #a976ff);
+        box-shadow: 0 4px 15px rgba(116, 59, 217, 0.3);
+      }
+      
+      /* Gradient text */
+      .gradient-text {
+        background-clip: text;
+        -webkit-background-clip: text;
+        color: transparent;
+        background-image: linear-gradient(135deg, #6027c5, #8a56e8);
+      }
+      
+      .dark .gradient-text {
+        background-image: linear-gradient(135deg, #8a56e8, #b288ff);
+      }
+      
+      /* Loading animation */
+      @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-15px); }
+      }
+      
+      .animate-bounce {
+        animation: bounce 1.5s infinite;
+      }
+    `;
+    document.head.appendChild(style);
     
     // Simulate app loading for animation purposes
     const timer = setTimeout(() => {
@@ -57,6 +212,7 @@ const App = () => {
     return () => {
       clearTimeout(timer);
       document.head.removeChild(viewportMeta);
+      document.head.removeChild(style);
     };
   }, []);
   
