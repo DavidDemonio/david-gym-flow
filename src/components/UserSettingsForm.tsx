@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, User, Bell, Mail } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { mysqlConnection } from "../utils/mysqlConnection";
-import MysqlService from "../services/MysqlService"; // Added MysqlService import
+import MysqlService from "../services/MysqlService";
 
 interface UserProfile {
   email: string;
@@ -83,13 +83,14 @@ export function UserSettingsForm() {
     setIsLoading(true);
     
     try {
-      // Use the MysqlService for saving user profile as mysqlConnection doesn't have setUserProfile
+      // Use the MysqlService for saving user profile
+      const config = MysqlService.getConfigFromLocalStorage('main') || {};
       const result = await MysqlService.saveConfigToLocalStorage({
-        ...MysqlService.getConfigFromLocalStorage('main'),
+        ...config,
         ...userProfile
-      }, 'user');
+      }, 'main');
       
-      if (result) {
+      if (result !== undefined) {
         toast({
           title: "Perfil actualizado",
           description: "Tu perfil ha sido actualizado correctamente",

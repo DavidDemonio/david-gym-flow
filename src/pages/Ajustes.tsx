@@ -9,7 +9,7 @@ import { mysqlConnection } from '../utils/mysqlConnection';
 import DatabaseSettingsForm from '../components/DatabaseSettingsForm';
 import { EmailSettingsForm } from '../components/EmailSettingsForm';
 import UserSettingsForm from '../components/UserSettingsForm';
-import EnvEditor from '../components/EnvEditor';
+import { EnvEditor } from '../components/EnvEditor';  // Import with curly braces since we're importing a named export
 import RoutinesDatabaseSettings from '../components/RoutinesDatabaseSettings';
 
 const Ajustes = () => {

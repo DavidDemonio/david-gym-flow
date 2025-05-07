@@ -51,29 +51,45 @@ export function DatabaseSettingsForm() {
       const result = await mysqlConnection.testConnection(formData);
       
       // Safely check result properties with null/undefined checks
-      if (result && typeof result === 'object' && 'success' in result) {
-        setIsConnected(!!result.success);
-        toast({
-          title: result.success ? "Conexión exitosa" : "Error de conexión",
-          description: result.message || (result.success ? 
+      if (result) {
+        // Handle possible result type variants
+        if (typeof result === 'object' && 'success' in result) {
+          // For object with success property
+          setIsConnected(result.success || false);
+          
+          const successMessage = result.success ? 
             "La conexión a la base de datos se ha establecido correctamente." : 
-            "No se pudo conectar a la base de datos."),
-        });
-      } else if (typeof result === 'boolean') {
-        // Handle case where testConnection returns a boolean
-        setIsConnected(result);
-        toast({
-          title: result ? "Conexión exitosa" : "Error de conexión",
-          description: result ? 
-            "La conexión a la base de datos se ha establecido correctamente." : 
-            "No se pudo conectar a la base de datos."
-        });
+            "No se pudo conectar a la base de datos.";
+          
+          toast({
+            title: result.success ? "Conexión exitosa" : "Error de conexión",
+            description: result.message || successMessage,
+          });
+        } else if (typeof result === 'boolean') {
+          // For boolean result
+          setIsConnected(result);
+          toast({
+            title: result ? "Conexión exitosa" : "Error de conexión",
+            description: result ? 
+              "La conexión a la base de datos se ha establecido correctamente." : 
+              "No se pudo conectar a la base de datos."
+          });
+        } else {
+          // Unexpected result type
+          setIsConnected(false);
+          toast({
+            variant: "destructive",
+            title: "Error de conexión",
+            description: "Respuesta inesperada al probar la conexión."
+          });
+        }
       } else {
+        // No result returned
         setIsConnected(false);
         toast({
           variant: "destructive",
           title: "Error de conexión",
-          description: "Respuesta inesperada al probar la conexión."
+          description: "No se recibió respuesta al probar la conexión."
         });
       }
     } catch (err) {

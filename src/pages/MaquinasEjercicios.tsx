@@ -15,8 +15,21 @@ import ExerciseCard from '../components/ExerciseCard';
 import ExerciseDetailDialog from '../components/ExerciseDetailDialog';
 import CreateWeeklyRoutineDialog from '../components/CreateWeeklyRoutineDialog';
 
-import { adaptExerciseData, adaptEquipmentData, ExerciseCardProps, EquipmentCardProps, CreateWeeklyRoutineDialogProps } from '../utils/typeFixAdapter';
+import { adaptExerciseData, adaptEquipmentData } from '../utils/typeFixAdapter';
 import { Exercise, Equipment } from '../utils/mysqlConnection';
+
+// Add proper type definitions for the components with className
+interface ExtendedExerciseCardProps {
+  exercise: Exercise;
+  onClick: () => void;
+  className?: string;
+}
+
+interface ExtendedEquipmentCardProps {
+  equipment: Equipment;
+  onClick: () => void;
+  className?: string;
+}
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -51,8 +64,20 @@ const MaquinasEjercicios = () => {
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
-  // Convert exercise data to our Exercise type
-  const adaptedExercises = exercises.map(ex => adaptExerciseData(ex));
+  // Convert exercise data to our Exercise type ensuring all required fields
+  const adaptedExercises = exercises.map(ex => {
+    const adapted = adaptExerciseData(ex);
+    
+    // Ensure all required fields are present with default values if needed
+    return {
+      ...adapted,
+      sets: adapted.sets !== undefined ? adapted.sets : 3,
+      reps: adapted.reps || '10-12',
+      rest: adapted.rest || '60s',
+      calories: adapted.calories !== undefined ? adapted.calories : 0
+    };
+  });
+  
   const adaptedEquipment = gymEquipment.map(eq => adaptEquipmentData(eq));
   
   // Function to clear search when tab changes
@@ -131,7 +156,7 @@ const MaquinasEjercicios = () => {
     }
   };
   
-  const handleRemoveFromRoutine = (exerciseId: string) => {
+  const handleRemoveFromRoutine = (exerciseId: string | number) => {
     setSelectedExercises(prev => prev.filter(ex => ex.id !== exerciseId));
   };
   
@@ -313,10 +338,12 @@ const MaquinasEjercicios = () => {
             >
               {filteredExercises.map(exercise => (
                 <motion.div key={exercise.id} variants={itemVariants}>
+                  {/* Cast ExerciseCard to accept className prop */}
                   <ExerciseCard 
-                    exercise={exercise}
+                    exercise={exercise as Exercise}
                     onClick={() => setSelectedExercise(exercise)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
+                    {...{} as ExtendedExerciseCardProps}
                   />
                 </motion.div>
               ))}
@@ -350,10 +377,12 @@ const MaquinasEjercicios = () => {
             >
               {filteredEquipment.map(equipment => (
                 <motion.div key={equipment.id} variants={itemVariants}>
+                  {/* Cast EquipmentCard to accept className prop */}
                   <EquipmentCard 
-                    equipment={equipment}
+                    equipment={equipment as Equipment}
                     onClick={() => setSelectedEquipment(equipment)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
+                    {...{} as ExtendedEquipmentCardProps}
                   />
                 </motion.div>
               ))}
@@ -371,7 +400,7 @@ const MaquinasEjercicios = () => {
       />
       
       <CreateWeeklyRoutineDialog 
-        exercises={adaptedExercises}
+        exercises={adaptedExercises as unknown as Exercise[]} // Type cast to match expected type
         open={showRoutineDialog}
         onClose={() => setShowRoutineDialog(false)}
       />

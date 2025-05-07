@@ -62,9 +62,14 @@ export function ExerciseEquipmentManager() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // Adapt exercises from data to match Exercise type with type property
-      const adaptedExercises = exercises.map(ex => adaptExerciseData({...ex, type: 'exercise'}));
-      setExercisesList(adaptedExercises as ExerciseWithType[]);
+      // Adapt exercises from data to match ExerciseWithType with required type property
+      const adaptedExercises = exercises.map(ex => {
+        const adapted = adaptExerciseData({...ex}) as ExerciseWithType;
+        adapted.type = 'exercise'; // Ensure type is always set
+        return adapted;
+      });
+      
+      setExercisesList(adaptedExercises);
       
       // Create some equipment from the exercise equipment fields
       const uniqueEquipmentMap = new Map();
@@ -76,14 +81,16 @@ export function ExerciseEquipmentManager() {
               ? ex.equipment 
               : 'Otro';
               
-            uniqueEquipmentMap.set(ex.equipment, adaptEquipmentData({
+            const adapted = adaptEquipmentData({
               id: `eq-${uniqueEquipmentMap.size + 1}`,
               name: ex.equipment,
               category,
               muscleGroups: ex.muscleGroups,
               emoji: '🏋️‍♀️',
-              type: 'equipment'
-            }));
+            }) as EquipmentWithType;
+            
+            adapted.type = 'equipment'; // Ensure type is always set
+            uniqueEquipmentMap.set(ex.equipment, adapted);
           }
         } else if (Array.isArray(ex.equipment)) {
           ex.equipment.forEach(eq => {
@@ -92,14 +99,16 @@ export function ExerciseEquipmentManager() {
                 ? eq 
                 : 'Otro';
                 
-              uniqueEquipmentMap.set(eq, adaptEquipmentData({
+              const adapted = adaptEquipmentData({
                 id: `eq-${uniqueEquipmentMap.size + 1}`,
                 name: eq,
                 category,
                 muscleGroups: ex.muscleGroups,
                 emoji: '🏋️‍♀️',
-                type: 'equipment'
-              }));
+              }) as EquipmentWithType;
+              
+              adapted.type = 'equipment'; // Ensure type is always set
+              uniqueEquipmentMap.set(eq, adapted);
             }
           });
         }
@@ -157,14 +166,16 @@ export function ExerciseEquipmentManager() {
     setDeleteDialogOpen(true);
   };
   
-  const openEditDialog = (item: Exercise | Equipment, type: string) => {
-    setEditItem({ ...item, type } as ExerciseWithType | EquipmentWithType);
+  const openEditDialog = (item: Exercise | Equipment, itemType: string) => {
+    // Make sure to add the type property
+    const itemWithType = { ...item, type: itemType } as ExerciseWithType | EquipmentWithType;
+    setEditItem(itemWithType);
     setEditDialogOpen(true);
   };
 
-  const openAddDialog = (type: string) => {
-    if (type === 'exercise') {
-      setNewItem({
+  const openAddDialog = (itemType: string) => {
+    if (itemType === 'exercise') {
+      const newExercise: ExerciseWithType = {
         id: `ex-${Date.now()}`,
         name: '',
         description: '',
@@ -176,18 +187,25 @@ export function ExerciseEquipmentManager() {
         rest: '60s',
         difficulty: 'Intermedio',
         calories: 0,
+        caloriesPerRep: 0,
+        requiresGym: false,
+        videoUrl: '',
         type: 'exercise'
-      } as ExerciseWithType);
+      };
+      setNewItem(newExercise);
     } else {
-      setNewItem({
+      const newEquipment: EquipmentWithType = {
         id: `eq-${Date.now()}`,
         name: '',
         category: 'Máquinas',
         muscleGroups: [],
         emoji: '🏋️‍♀️',
         description: '',
+        caloriesPerHour: 0,
+        image: '',
         type: 'equipment'
-      } as EquipmentWithType);
+      };
+      setNewItem(newEquipment);
     }
     setAddDialogOpen(true);
   };
@@ -198,13 +216,13 @@ export function ExerciseEquipmentManager() {
     try {
       if (editItem.type === 'exercise') {
         const updatedExercises = exercisesList.map(ex => 
-          ex.id === editItem.id ? { ...editItem as Exercise } : ex
+          ex.id === editItem.id ? { ...editItem as ExerciseWithType } : ex
         );
         setExercisesList(updatedExercises);
         // In a real app, we'd save to API/DB
       } else {
         const updatedEquipment = equipmentList.map(eq => 
-          eq.id === editItem.id ? { ...editItem as Equipment } : eq
+          eq.id === editItem.id ? { ...editItem as EquipmentWithType } : eq
         );
         setEquipmentList(updatedEquipment);
         // In a real app, we'd save to API/DB
@@ -232,10 +250,10 @@ export function ExerciseEquipmentManager() {
     
     try {
       if (newItem.type === 'exercise') {
-        setExercisesList(prev => [...prev, newItem as Exercise]);
+        setExercisesList(prev => [...prev, newItem as ExerciseWithType]);
         // In a real app, we'd save to API/DB
       } else {
-        setEquipmentList(prev => [...prev, newItem as Equipment]);
+        setEquipmentList(prev => [...prev, newItem as EquipmentWithType]);
         // In a real app, we'd save to API/DB
       }
       

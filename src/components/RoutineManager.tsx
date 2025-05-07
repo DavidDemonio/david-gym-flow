@@ -361,6 +361,52 @@ export function RoutineManager() {
     }
   };
 
+  const generateRoutineEmailContent = (routine: RoutineWithStatus) => {
+    // Generate HTML content for the routine email
+    return `
+      <h1>Rutina: ${routine.name}</h1>
+      <p>Estado: ${routine.status}</p>
+      <p>Objetivo: ${routine.objetivo || 'No especificado'}</p>
+      <p>Nivel: ${routine.nivel || 'No especificado'}</p>
+      <p>Equipamiento: ${routine.equipamiento || 'No especificado'}</p>
+    `;
+  };
+
+  const handleSendEmail = async (routine: RoutineWithStatus) => {
+    setIsSendingEmail(true);
+    try {
+      const userResponse = await mysqlConnection.getUserProfile();
+      // Access email safely
+      const userEmail = userResponse?.data?.email || '';
+      if (userEmail) {
+        await mysqlConnection.sendEmail({
+          to: userEmail,
+          subject: `Tu rutina: ${routine.name}`,
+          html: generateRoutineEmailContent(routine)
+        });
+        toast({
+          title: "Email enviado",
+          description: `Se ha enviado la rutina a ${userEmail}`
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "No se pudo obtener tu dirección de correo"
+        });
+      }
+    } catch (error) {
+      console.error("Error sending email:", error);
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: "No se pudo enviar el email con la rutina"
+      });
+    } finally {
+      setIsSendingEmail(false);
+    }
+  };
+
   return (
     <Card className="w-full">
       <CardHeader>
