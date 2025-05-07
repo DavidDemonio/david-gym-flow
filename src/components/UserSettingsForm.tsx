@@ -68,14 +68,14 @@ export function UserSettingsForm() {
     setIsSaving(true);
     
     try {
-      // Call API to update user profile
-      const result = await mysqlConnection.updateUserProfile({
+      // Call API to update user profile using the correct method name
+      const result = await mysqlConnection.saveUserProfile({
         name: formData.name,
         email: formData.email,
         notificationsEnabled: formData.notificationsEnabled
       });
       
-      if (result && result.success) {
+      if (result) {
         toast({
           title: "Perfil actualizado",
           description: "La información del usuario ha sido actualizada correctamente"
@@ -84,7 +84,7 @@ export function UserSettingsForm() {
         toast({
           variant: "destructive",
           title: "Error al guardar",
-          description: result?.message || "No se pudo actualizar la información del usuario"
+          description: "No se pudo actualizar la información del usuario"
         });
       }
     } catch (err) {

@@ -16,10 +16,10 @@ import ExerciseCard from '../components/ExerciseCard';
 import ExerciseDetailDialog from '../components/ExerciseDetailDialog';
 import CreateWeeklyRoutineDialog from '../components/CreateWeeklyRoutineDialog';
 
-import { adaptExerciseData, adaptEquipmentData } from '../components/typeFixAdapter';
+import { adaptExerciseData, adaptEquipmentData } from '../utils/typeFixAdapter';
 import { Exercise, Equipment } from '../utils/mysqlConnection';
 
-// Define data interfaces to match with equipmentData.ts
+// Define our own data interfaces that match the ones from equipmentData.ts
 interface DataExercise {
   id: string;
   name: string;
@@ -50,13 +50,13 @@ interface DataEquipment {
 
 // Update interface definitions to include className
 interface ExerciseCardProps {
-  exercise: Exercise;
+  exercise: Exercise | DataExercise;
   onClick: () => void;
   className?: string;
 }
 
 interface EquipmentCardProps {
-  equipment: Equipment;
+  equipment: Equipment | DataEquipment;
   onClick: () => void;
   className?: string;
 }
@@ -365,7 +365,7 @@ const MaquinasEjercicios = () => {
               {filteredExercises.map(exercise => (
                 <motion.div key={exercise.id} variants={itemVariants}>
                   <ExerciseCard 
-                    exercise={exercise as any}
+                    exercise={exercise}
                     onClick={() => setSelectedExercise(exercise)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
@@ -402,7 +402,7 @@ const MaquinasEjercicios = () => {
               {filteredEquipment.map(equipment => (
                 <motion.div key={equipment.id} variants={itemVariants}>
                   <EquipmentCard 
-                    equipment={equipment as any}
+                    equipment={equipment}
                     onClick={() => setSelectedEquipment(equipment)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
@@ -413,16 +413,16 @@ const MaquinasEjercicios = () => {
         </TabsContent>
       </Tabs>
       
-      {/* Diálogos */}
+      {/* Dialogs */}
       <ExerciseDetailDialog 
         exercise={selectedExercise}
         open={!!selectedExercise}
         onClose={() => setSelectedExercise(null)}
-        onAddToRoutine={handleAddToRoutine as any}
+        onAddToRoutine={(exercise) => handleAddToRoutine(exercise as Exercise)}
       />
       
       <CreateWeeklyRoutineDialog 
-        exercises={adaptedExercises as any} 
+        exercises={adaptedExercises} 
         open={showRoutineDialog}
         onClose={() => setShowRoutineDialog(false)}
       />
