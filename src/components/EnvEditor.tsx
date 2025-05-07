@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, Settings, Save } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { mysqlConnection } from "../utils/mysqlConnection";
+import { envManager } from "../utils/envManager";
 
 export function EnvEditor() {
   const { toast } = useToast();
@@ -17,15 +18,21 @@ export function EnvEditor() {
     loadVariables();
   }, []);
 
-  // Fix the code where TS1345 error occurs - expression of type 'void' cannot be tested for truthiness
   const loadVariables = async () => {
     setIsLoading(true);
     try {
-      const loadedVars = await mysqlConnection.loadEnvironmentVariables();
-      // Check if loadedVars exists and has the expected structure instead of testing void
+      // Use the envManager instead of directly calling mysqlConnection
+      const loadedVars = await envManager.getAllVariables();
+      
       if (loadedVars && typeof loadedVars === 'object') {
-        setVariables(loadedVars);
+        // Convert the object to a string format for the textarea
+        const varsString = Object.entries(loadedVars)
+          .map(([key, value]) => `${key}=${value}`)
+          .join('\n');
+          
+        setVariables(varsString);
       }
+      
       toast({
         title: "Variables cargadas",
         description: "Variables de entorno cargadas correctamente"
@@ -45,11 +52,35 @@ export function EnvEditor() {
   const saveVariables = async () => {
     setIsLoading(true);
     try {
-      await mysqlConnection.saveEnvironmentVariables(variables);
-      toast({
-        title: "Variables guardadas",
-        description: "Variables de entorno guardadas correctamente"
+      // Parse the variables from the textarea into an object
+      const varsObject: Record<string, string> = {};
+      variables.split('\n').forEach(line => {
+        const trimmedLine = line.trim();
+        if (!trimmedLine || trimmedLine.startsWith('#')) return;
+        
+        const match = trimmedLine.match(/^([^=]+)=(.*)$/);
+        if (match) {
+          const key = match[1].trim();
+          const value = match[2];
+          varsObject[key] = value;
+        }
       });
+      
+      // Use the envManager to save variables
+      const success = await envManager.updateVariables(varsObject);
+      
+      if (success) {
+        toast({
+          title: "Variables guardadas",
+          description: "Variables de entorno guardadas correctamente"
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error",
+          description: "Error al guardar variables de entorno"
+        });
+      }
     } catch (error) {
       console.error("Error saving environment variables:", error);
       toast({
@@ -132,5 +163,4 @@ export function EnvEditor() {
   );
 }
 
-// Make sure to export the component as default too
-export default EnvEditor;
+export { EnvEditor };

@@ -31,6 +31,7 @@ export function RoutineManager() {
   const navigate = useNavigate();
   const [routines, setRoutines] = useState<RoutineWithStatus[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [routineToDelete, setRoutineToDelete] = useState<number | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
@@ -97,17 +98,22 @@ export function RoutineManager() {
         description: "La rutina ha sido eliminada correctamente"
       });
       
-      // Send email notification
-      if (mysqlConnection.getUserProfile()?.email) {
-        const emailResult = await mysqlConnection.sendEmail(
-          mysqlConnection.getUserProfile()!.email!,
-          "Rutina eliminada",
-          `Has eliminado una rutina de entrenamiento.\n\nFecha: ${new Date().toLocaleDateString()}\n\nSigue entrenando con GymFlow!`
-        );
-        
-        if (!emailResult.success) {
-          console.error("Error sending email notification:", emailResult);
+      // Send email notification - using async/await properly here
+      try {
+        const userProfileResult = await mysqlConnection.getUserProfile();
+        if (userProfileResult?.success && userProfileResult?.data?.email) {
+          const emailResult = await mysqlConnection.sendEmail(
+            userProfileResult.data.email,
+            "Rutina eliminada",
+            `Has eliminado una rutina de entrenamiento.\n\nFecha: ${new Date().toLocaleDateString()}\n\nSigue entrenando con GymFlow!`
+          );
+          
+          if (!emailResult.success) {
+            console.error("Error sending email notification:", emailResult);
+          }
         }
+      } catch (emailErr) {
+        console.error("Error sending email notification:", emailErr);
       }
     } catch (err) {
       console.error("Error deleting routine:", err);
@@ -158,17 +164,22 @@ export function RoutineManager() {
         description: "Los cambios han sido guardados correctamente"
       });
       
-      // Send email notification
-      if (mysqlConnection.getUserProfile()?.email) {
-        const emailResult = await mysqlConnection.sendEmail(
-          mysqlConnection.getUserProfile()!.email!,
-          "Rutina actualizada",
-          `Has actualizado la rutina "${routineToEdit.name}".\n\nFecha: ${new Date().toLocaleDateString()}\n\nEstado: ${getStatusText(routineToEdit.status)}\n\nSigue entrenando con GymFlow!`
-        );
-        
-        if (!emailResult.success) {
-          console.error("Error sending email notification:", emailResult);
+      // Send email notification - using async/await properly here
+      try {
+        const userProfileResult = await mysqlConnection.getUserProfile();
+        if (userProfileResult?.success && userProfileResult?.data?.email) {
+          const emailResult = await mysqlConnection.sendEmail(
+            userProfileResult.data.email,
+            "Rutina actualizada",
+            `Has actualizado la rutina "${routineToEdit.name}".\n\nFecha: ${new Date().toLocaleDateString()}\n\nEstado: ${getStatusText(routineToEdit.status)}\n\nSigue entrenando con GymFlow!`
+          );
+          
+          if (!emailResult.success) {
+            console.error("Error sending email notification:", emailResult);
+          }
         }
+      } catch (emailErr) {
+        console.error("Error sending email notification:", emailErr);
       }
     } catch (err) {
       console.error("Error updating routine:", err);
@@ -203,24 +214,29 @@ export function RoutineManager() {
         description: `La rutina ha sido renombrada a "${newRoutineName}"`
       });
       
-      // Send email notification
-      if (mysqlConnection.getUserProfile()?.email) {
-        const emailResult = await mysqlConnection.sendEmail(
-          mysqlConnection.getUserProfile()!.email!,
-          "Rutina renombrada",
-          `Has renombrado una rutina de entrenamiento.\n\nNuevo nombre: "${newRoutineName}"\n\nFecha: ${new Date().toLocaleDateString()}\n\nSigue entrenando con GymFlow!`
-        );
-        
-        if (!emailResult.success) {
-          console.error("Error sending email notification:", emailResult);
+      // Send email notification - using async/await properly here
+      try {
+        const userProfileResult = await mysqlConnection.getUserProfile();
+        if (userProfileResult?.success && userProfileResult?.data?.email) {
+          const emailResult = await mysqlConnection.sendEmail(
+            userProfileResult.data.email,
+            "Rutina renombrada",
+            `Has cambiado el nombre de la rutina a "${newRoutineName}".\n\nFecha: ${new Date().toLocaleDateString()}\n\nSigue entrenando con GymFlow!`
+          );
+          
+          if (!emailResult.success) {
+            console.error("Error sending email notification:", emailResult);
+          }
         }
+      } catch (emailErr) {
+        console.error("Error sending email notification:", emailErr);
       }
     } catch (err) {
       console.error("Error renaming routine:", err);
       toast({
         variant: "destructive",
         title: "Error al renombrar",
-        description: "No se pudo renombrar la rutina seleccionada"
+        description: "No se pudo renombrar la rutina"
       });
     } finally {
       setRenameDialogOpen(false);
@@ -229,50 +245,90 @@ export function RoutineManager() {
     }
   };
   
-  const handleChangeStatus = async (routineId: number, status: RoutineStatus) => {
-    try {
-      // Update status in the routine list
-      const updatedRoutines = routines.map(r => 
-        r.id === routineId ? {...r, status} : r
-      );
-      
-      setRoutines(updatedRoutines);
-      
-      // Save status in localStorage
-      localStorage.setItem(`routine_status_${routineId}`, status);
-      
-      toast({
-        title: "Estado actualizado",
-        description: `Rutina marcada como "${getStatusText(status)}"`
+  const generateRoutineEmailContent = (routine: RoutineWithStatus): string => {
+    let content = `<h2>Rutina: ${routine.name}</h2>`;
+    content += `<p>Estado: ${getStatusText(routine.status)}</p>`;
+    content += `<p>Días de entrenamiento: ${routine.dias}</p>`;
+    
+    if (routine.objetivo) content += `<p>Objetivo: ${routine.objetivo}</p>`;
+    if (routine.nivel) content += `<p>Nivel: ${routine.nivel}</p>`;
+    if (routine.equipamiento) content += `<p>Equipamiento: ${routine.equipamiento}</p>`;
+    
+    content += `<h3>Ejercicios</h3>`;
+    
+    if (routine.exercises) {
+      Object.entries(routine.exercises).forEach(([day, exercises]) => {
+        content += `<h4>Día ${day}</h4>`;
+        content += `<ul>`;
+        exercises.forEach(exercise => {
+          content += `<li>${exercise.name} - ${exercise.sets} series x ${exercise.reps}</li>`;
+        });
+        content += `</ul>`;
       });
+    }
+    
+    content += `<p><em>Generado por GymFlow</em></p>`;
+    return content;
+  };
+
+  const sendRoutineByEmail = async (routine: RoutineWithStatus) => {
+    setIsSendingEmail(true);
+    try {
+      // Generate email content
+      const emailContent = generateRoutineEmailContent(routine);
       
-      // Get routine name for the email
-      const routine = routines.find(r => r.id === routineId);
-      
-      // Send email notification
-      if (mysqlConnection.getUserProfile()?.email) {
-        const emailResult = await mysqlConnection.sendEmail(
-          mysqlConnection.getUserProfile()!.email!,
-          `Estado de rutina actualizado`,
-          `Has actualizado el estado de la rutina "${routine?.name}".\n\nNuevo estado: ${getStatusText(status)}\n\nFecha: ${new Date().toLocaleDateString()}\n\n¡Sigue entrenando con GymFlow!`
-        );
-        
-        if (!emailResult.success) {
-          console.error("Error sending email notification:", emailResult);
+      // Get user email
+      try {
+        const userProfileResult = await mysqlConnection.getUserProfile();
+        if (userProfileResult?.success && userProfileResult?.data?.email) {
+          const result = await mysqlConnection.sendEmail(
+            userProfileResult.data.email,
+            `Tu rutina: ${routine.name}`,
+            emailContent
+          );
+          
+          if (result.success) {
+            toast({
+              title: "Email enviado",
+              description: "La rutina ha sido enviada a tu correo"
+            });
+          } else {
+            toast({
+              variant: "destructive",
+              title: "Error al enviar",
+              description: result.message || "No se pudo enviar el correo"
+            });
+          }
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error al enviar",
+            description: "No se encontró una dirección de correo asociada"
+          });
         }
+      } catch (emailErr) {
+        console.error("Error sending routine by email:", emailErr);
+        toast({
+          variant: "destructive",
+          title: "Error al enviar",
+          description: "Error al enviar la rutina por correo"
+        });
       }
     } catch (err) {
-      console.error("Error updating status:", err);
+      console.error("Error in sendRoutineByEmail:", err);
       toast({
         variant: "destructive",
-        title: "Error al actualizar",
-        description: "No se pudo actualizar el estado de la rutina"
+        title: "Error al enviar",
+        description: "No se pudo enviar la rutina por correo"
       });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
   
+  // Helper function to get text representation of status
   const getStatusText = (status: RoutineStatus): string => {
-    switch (status) {
+    switch(status) {
       case 'pending': return 'Pendiente';
       case 'in-progress': return 'En progreso';
       case 'completed': return 'Completada';
@@ -445,7 +501,7 @@ export function RoutineManager() {
                     {getStatusBadge(routine.status)}
                   </div>
                   <CardDescription>
-                    {routine.objetivo} • {routine.nivel} • {routine.dias} días
+                    {routine.objetivo} • {routine.nivel} • {routine.dias}
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pb-2">

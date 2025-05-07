@@ -55,15 +55,15 @@ export function DatabaseSettingsForm() {
         // Handle possible result type variants
         if (typeof result === 'object' && 'success' in result) {
           // For object with success property
-          setIsConnected(result.success || false);
+          setIsConnected(result.success === true);
           
-          const successMessage = result.success ? 
+          const successMessage = result.success === true ? 
             "La conexión a la base de datos se ha establecido correctamente." : 
             "No se pudo conectar a la base de datos.";
           
           toast({
-            title: result.success ? "Conexión exitosa" : "Error de conexión",
-            description: result.message || successMessage,
+            title: result.success === true ? "Conexión exitosa" : "Error de conexión",
+            description: result.message ? result.message : successMessage,
           });
         } else if (typeof result === 'boolean') {
           // For boolean result

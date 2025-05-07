@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,7 +7,6 @@ import { Label } from "@/components/ui/label";
 import { Loader2, User, Bell, Mail } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { mysqlConnection } from "../utils/mysqlConnection";
-import MysqlService from "../services/MysqlService";
 
 interface UserProfile {
   email: string;
@@ -42,14 +40,19 @@ export function UserSettingsForm() {
           notificationsEnabled: response.data.notificationsEnabled !== false // Default to true if not specified
         });
       } else {
-        // If no profile exists yet, try to get the current logged in user
-        const currentUser = MysqlService.getCurrentUser(); // Using MysqlService instead
-        if (currentUser) {
-          setUserProfile({
-            email: currentUser.email || '',
-            name: currentUser.name || '',
-            notificationsEnabled: true
-          });
+        // If no profile exists yet, try to get the current logged in user from localStorage
+        const currentUserStr = localStorage.getItem('currentUser');
+        if (currentUserStr) {
+          try {
+            const currentUser = JSON.parse(currentUserStr);
+            setUserProfile({
+              email: currentUser.email || '',
+              name: currentUser.name || '',
+              notificationsEnabled: true
+            });
+          } catch (e) {
+            console.error('Error parsing current user:', e);
+          }
         }
       }
     } catch (err) {
@@ -83,14 +86,10 @@ export function UserSettingsForm() {
     setIsLoading(true);
     
     try {
-      // Use the MysqlService for saving user profile
-      const config = MysqlService.getConfigFromLocalStorage('main') || {};
-      const result = await MysqlService.saveConfigToLocalStorage({
-        ...config,
-        ...userProfile
-      }, 'main');
+      // Save user profile using mysqlConnection method
+      const result = await mysqlConnection.saveUserProfile(userProfile);
       
-      if (result !== undefined) {
+      if (result) {
         toast({
           title: "Perfil actualizado",
           description: "Tu perfil ha sido actualizado correctamente",
