@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import {
   Card, CardContent, CardDescription, 
@@ -315,6 +314,50 @@ export function RoutineManager() {
       // Save to localStorage and navigate to the routine page
       localStorage.setItem('weeklyRoutine', JSON.stringify(weeklyRoutineData));
       navigate('/mi-rutina', { state: { weeklyRoutine: true } });
+    }
+  };
+
+  // Method to handle email operations for routines
+  const sendRoutineEmail = async (routine) => {
+    try {
+      const userProfileResponse = await mysqlConnection.getUserProfile();
+      const userProfile = userProfileResponse?.data;
+      
+      if (userProfile?.email) {
+        const emailResult = await mysqlConnection.sendEmail(
+          userProfile.email,
+          `Tu rutina: ${routine.name}`,
+          generateRoutineEmailContent(routine)
+        );
+        
+        if (emailResult.success) {
+          toast({
+            title: "Email enviado",
+            description: `Rutina enviada a ${userProfile.email}`,
+          });
+        } else {
+          toast({
+            variant: "destructive",
+            title: "Error al enviar email",
+            description: "No se pudo enviar el email con la rutina"
+          });
+        }
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Error al enviar email",
+          description: "No se encontró una dirección de email asociada a tu cuenta"
+        });
+      }
+    } catch (error) {
+      console.error("Error sending routine email:", error);
+      toast({
+        variant: "destructive",
+        title: "Error al enviar email",
+        description: "Ocurrió un error al enviar el email"
+      });
+    } finally {
+      setIsSendingEmail(false);
     }
   };
 

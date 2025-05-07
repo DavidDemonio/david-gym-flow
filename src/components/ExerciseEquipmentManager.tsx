@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { 
   Tabs, TabsContent, TabsList, TabsTrigger 
@@ -30,43 +29,31 @@ import {
   Save, X, ChevronDown, Filter, CheckCircle2 
 } from "lucide-react";
 
-// Define types for our data models
-interface Exercise {
-  id: string | number;
-  name: string;
-  description: string;
-  muscleGroups: string[];
-  equipment: string | string[];
-  emoji: string;
-  sets: number;
-  reps: string;
-  rest: string;
-  calories?: number;
-  difficulty?: string;
+import { Exercise, Equipment } from "../utils/mysqlConnection";
+import { adaptExerciseData, adaptEquipmentData } from "../utils/typeFixAdapter";
+
+// Define extended types that include type property
+interface ExerciseWithType extends Exercise {
+  type: string;
 }
 
-interface Equipment {
-  id: string | number;
-  name: string;
-  category: string;
-  muscleGroups: string[];
-  emoji: string;
-  description?: string;
+interface EquipmentWithType extends Equipment {
+  type: string;
 }
 
 export function ExerciseEquipmentManager() {
   const { toast } = useToast();
   const isMobile = useIsMobile();
-  const [exercisesList, setExercisesList] = useState<Exercise[]>([...exercises]);
-  const [equipmentList, setEquipmentList] = useState<Equipment[]>([]);
+  const [exercisesList, setExercisesList] = useState<ExerciseWithType[]>([]);
+  const [equipmentList, setEquipmentList] = useState<EquipmentWithType[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("ejercicios");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [itemToDelete, setItemToDelete] = useState<{ id: string | number, type: string } | null>(null);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [editItem, setEditItem] = useState<Exercise | Equipment | null>(null);
-  const [newItem, setNewItem] = useState<Exercise | Equipment | null>(null);
+  const [editItem, setEditItem] = useState<ExerciseWithType | EquipmentWithType | null>(null);
+  const [newItem, setNewItem] = useState<ExerciseWithType | EquipmentWithType | null>(null);
   
   useEffect(() => {
     loadData();
@@ -75,9 +62,9 @@ export function ExerciseEquipmentManager() {
   const loadData = async () => {
     setIsLoading(true);
     try {
-      // In a real app, we'd load from API
-      // For now, load from our static data
-      setExercisesList([...exercises]);
+      // Adapt exercises from data to match Exercise type with type property
+      const adaptedExercises = exercises.map(ex => adaptExerciseData({...ex, type: 'exercise'}));
+      setExercisesList(adaptedExercises as ExerciseWithType[]);
       
       // Create some equipment from the exercise equipment fields
       const uniqueEquipmentMap = new Map();
@@ -89,13 +76,14 @@ export function ExerciseEquipmentManager() {
               ? ex.equipment 
               : 'Otro';
               
-            uniqueEquipmentMap.set(ex.equipment, {
+            uniqueEquipmentMap.set(ex.equipment, adaptEquipmentData({
               id: `eq-${uniqueEquipmentMap.size + 1}`,
               name: ex.equipment,
               category,
               muscleGroups: ex.muscleGroups,
               emoji: '🏋️‍♀️',
-            });
+              type: 'equipment'
+            }));
           }
         } else if (Array.isArray(ex.equipment)) {
           ex.equipment.forEach(eq => {
@@ -104,19 +92,20 @@ export function ExerciseEquipmentManager() {
                 ? eq 
                 : 'Otro';
                 
-              uniqueEquipmentMap.set(eq, {
+              uniqueEquipmentMap.set(eq, adaptEquipmentData({
                 id: `eq-${uniqueEquipmentMap.size + 1}`,
                 name: eq,
                 category,
                 muscleGroups: ex.muscleGroups,
                 emoji: '🏋️‍♀️',
-              });
+                type: 'equipment'
+              }));
             }
           });
         }
       });
       
-      setEquipmentList(Array.from(uniqueEquipmentMap.values()));
+      setEquipmentList(Array.from(uniqueEquipmentMap.values()) as EquipmentWithType[]);
       
     } catch (err) {
       console.error("Error loading data:", err);
@@ -169,7 +158,7 @@ export function ExerciseEquipmentManager() {
   };
   
   const openEditDialog = (item: Exercise | Equipment, type: string) => {
-    setEditItem({ ...item, type });
+    setEditItem({ ...item, type } as ExerciseWithType | EquipmentWithType);
     setEditDialogOpen(true);
   };
 
@@ -180,14 +169,15 @@ export function ExerciseEquipmentManager() {
         name: '',
         description: '',
         muscleGroups: [],
-        equipment: '',
+        equipment: [],
         emoji: '💪',
         sets: 3,
         reps: '12',
         rest: '60s',
         difficulty: 'Intermedio',
+        calories: 0,
         type: 'exercise'
-      });
+      } as ExerciseWithType);
     } else {
       setNewItem({
         id: `eq-${Date.now()}`,
@@ -197,7 +187,7 @@ export function ExerciseEquipmentManager() {
         emoji: '🏋️‍♀️',
         description: '',
         type: 'equipment'
-      });
+      } as EquipmentWithType);
     }
     setAddDialogOpen(true);
   };

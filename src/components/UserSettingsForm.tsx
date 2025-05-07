@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Loader2, User, Bell, Mail } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
 import { mysqlConnection } from "../utils/mysqlConnection";
+import MysqlService from "../services/MysqlService"; // Added MysqlService import
 
 interface UserProfile {
   email: string;
@@ -34,7 +35,7 @@ export function UserSettingsForm() {
     try {
       const response = await mysqlConnection.getUserProfile();
       
-      if (response.success && response.data) {
+      if (response && response.success && response.data) {
         setUserProfile({
           email: response.data.email || '',
           name: response.data.name || '',
@@ -42,7 +43,7 @@ export function UserSettingsForm() {
         });
       } else {
         // If no profile exists yet, try to get the current logged in user
-        const currentUser = mysqlConnection.getCurrentUser?.();
+        const currentUser = MysqlService.getCurrentUser(); // Using MysqlService instead
         if (currentUser) {
           setUserProfile({
             email: currentUser.email || '',
@@ -82,7 +83,11 @@ export function UserSettingsForm() {
     setIsLoading(true);
     
     try {
-      const result = await mysqlConnection.setUserProfile(userProfile);
+      // Use the MysqlService for saving user profile as mysqlConnection doesn't have setUserProfile
+      const result = await MysqlService.saveConfigToLocalStorage({
+        ...MysqlService.getConfigFromLocalStorage('main'),
+        ...userProfile
+      }, 'user');
       
       if (result) {
         toast({

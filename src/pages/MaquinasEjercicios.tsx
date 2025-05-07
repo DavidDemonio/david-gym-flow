@@ -1,7 +1,6 @@
-
 import { useState, useEffect } from 'react';
 import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X, ArrowRight } from 'lucide-react';
-import { gymEquipment, exercises, muscleGroups, equipmentCategories, Exercise, Equipment } from '../data/equipmentData';
+import { gymEquipment, exercises, muscleGroups, equipmentCategories } from '../data/equipmentData';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
@@ -15,6 +14,9 @@ import EquipmentCard from '../components/EquipmentCard';
 import ExerciseCard from '../components/ExerciseCard';
 import ExerciseDetailDialog from '../components/ExerciseDetailDialog';
 import CreateWeeklyRoutineDialog from '../components/CreateWeeklyRoutineDialog';
+
+import { adaptExerciseData, adaptEquipmentData, ExerciseCardProps, EquipmentCardProps, CreateWeeklyRoutineDialogProps } from '../utils/typeFixAdapter';
+import { Exercise, Equipment } from '../utils/mysqlConnection';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -49,26 +51,30 @@ const MaquinasEjercicios = () => {
   const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
+  // Convert exercise data to our Exercise type
+  const adaptedExercises = exercises.map(ex => adaptExerciseData(ex));
+  const adaptedEquipment = gymEquipment.map(eq => adaptEquipmentData(eq));
+  
   // Function to clear search when tab changes
   useEffect(() => {
     setSearchTerm('');
   }, [selectedTab]);
   
-  // Filtering functions
+  // Filtering functions for adapted data
   const filterEquipment = () => {
-    let filtered = [...gymEquipment];
+    let filtered = [...adaptedEquipment];
     
     if (searchTerm) {
       filtered = filtered.filter(eq => 
         eq.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        eq.category.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        eq.category?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         eq.muscleGroups.some(mg => mg.toLowerCase().includes(searchTerm.toLowerCase()))
       );
     }
     
     if (selectedCategories.length > 0) {
       filtered = filtered.filter(eq => 
-        selectedCategories.includes(eq.category)
+        eq.category && selectedCategories.includes(eq.category)
       );
     }
     
@@ -82,7 +88,7 @@ const MaquinasEjercicios = () => {
   };
   
   const filterExercises = () => {
-    let filtered = [...exercises];
+    let filtered = [...adaptedExercises];
     
     if (searchTerm) {
       filtered = filtered.filter(ex => 
@@ -365,7 +371,7 @@ const MaquinasEjercicios = () => {
       />
       
       <CreateWeeklyRoutineDialog 
-        exercises={selectedExercises.length > 0 ? selectedExercises : exercises}
+        exercises={adaptedExercises}
         open={showRoutineDialog}
         onClose={() => setShowRoutineDialog(false)}
       />

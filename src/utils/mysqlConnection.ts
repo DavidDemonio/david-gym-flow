@@ -1,3 +1,4 @@
+import { createClient } from '@supabase/supabase-js';
 import { envManager } from './envManager';
 import { EmailConfig } from '../services/MysqlService';
 
@@ -10,7 +11,7 @@ export interface DbConfig {
 }
 
 export interface Exercise {
-  id: number;
+  id: number | string;
   name: string;
   description: string;
   muscleGroups: string[];
@@ -24,11 +25,11 @@ export interface Exercise {
   difficulty?: string;
   requiresGym?: boolean;
   videoUrl?: string;
-  type?: string; // Added to support the components that use this property
+  type?: string; // Added type property
 }
 
 export interface Equipment {
-  id: number;
+  id: number | string;
   name: string;
   muscleGroups: string[];
   description: string;
@@ -36,7 +37,7 @@ export interface Equipment {
   emoji?: string;
   category?: string;
   caloriesPerHour?: number;
-  type?: string; // Added to support the components that use this property
+  type?: string; // Added type property
 }
 
 export interface Routine {
@@ -44,23 +45,23 @@ export interface Routine {
   name: string;
   dias: number;
   exercises: Record<string, Exercise[]>;
-  status?: string;
-  objetivo?: string; // Added for compatibility
-  nivel?: string; // Added for compatibility
-  equipamiento?: string; // Added for compatibility
-}
-
-export interface RoutineWithStatus extends Routine {
+  status?: string; // Make status optional for backward compatibility
   objetivo?: string;
   nivel?: string;
   equipamiento?: string;
+}
+
+export interface RoutineWithStatus extends Routine {
   status: string;
+  objetivo: string;
+  nivel: string;
+  equipamiento: string;
 }
 
 interface Cache {
   exercises?: Exercise[];
   routines?: Routine[];
-  logs?: string[]; // Added for connection logs
+  logs?: string[];
 }
 
 class MySQLConnection {
@@ -69,7 +70,7 @@ class MySQLConnection {
   private authDbConfig: DbConfig | null = null;
   private emailConfig: EmailConfig | null = null;
   private isMainDbConnected: boolean = false;
-  private isRoutinesConnected: boolean = false;
+  private isRoutinesDbConnected: boolean = false; // Renamed from isRoutinesConnected
   private isAuthDbConnected: boolean = false;
   private cachedData: Cache = {
     logs: []
@@ -99,7 +100,7 @@ class MySQLConnection {
         this.routinesDbConfig = JSON.parse(routinesDbStored);
         this.testRoutinesDbConnection(this.routinesDbConfig)
           .then(isConnected => {
-            this.isRoutinesConnected = isConnected;
+            this.isRoutinesDbConnected = isConnected;
           });
       } catch (error) {
         console.error('Error parsing stored routines database config:', error);
@@ -162,7 +163,7 @@ class MySQLConnection {
   async setRoutinesDbConfig(config: DbConfig): Promise<void> {
     this.routinesDbConfig = config;
     localStorage.setItem('routinesDbConfig', JSON.stringify(config));
-    this.isRoutinesConnected = await this.testRoutinesDbConnection(config);
+    this.isRoutinesDbConnected = await this.testRoutinesDbConnection(config);
     this.logMessage(`Routines database configuration updated: ${config.database}@${config.host}:${config.port}`);
   }
 
@@ -304,12 +305,12 @@ class MySQLConnection {
       }
 
       const result = await response.json();
-      this.isRoutinesConnected = result.success;
+      this.isRoutinesDbConnected = result.success;
       this.logMessage(`Routines database connection test ${result.success ? 'successful' : 'failed'}`);
       return result.success;
     } catch (error) {
       console.error('Error testing routines MySQL connection:', error);
-      this.isRoutinesConnected = false;
+      this.isRoutinesDbConnected = false;
       this.logMessage(`Routines database connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
@@ -320,8 +321,9 @@ class MySQLConnection {
     return this.isMainDbConnected;
   }
 
+  // Renamed from isRoutinesConnected to avoid duplicate identifier
   isRoutinesConnected(): boolean {
-    return this.isRoutinesConnected;
+    return this.isRoutinesDbConnected;
   }
 
   // Reconnect to database

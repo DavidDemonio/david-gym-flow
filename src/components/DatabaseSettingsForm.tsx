@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -49,9 +50,9 @@ export function DatabaseSettingsForm() {
     try {
       const result = await mysqlConnection.testConnection(formData);
       
-      // Check if result is an object with success property
-      if (typeof result === 'object' && result !== null && 'success' in result) {
-        setIsConnected(result.success);
+      // Safely check result properties with null/undefined checks
+      if (result && typeof result === 'object' && 'success' in result) {
+        setIsConnected(!!result.success);
         toast({
           title: result.success ? "Conexión exitosa" : "Error de conexión",
           description: result.message || (result.success ? 
