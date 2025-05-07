@@ -3,7 +3,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useIsMobile } from "./hooks/use-mobile";
 import MysqlService from "./services/MysqlService";
@@ -12,6 +12,9 @@ import { envManager } from "./utils/envManager";
 
 // Page Imports
 import Home from "./pages/Home";
+import Login from "./pages/Login";
+import Register from "./pages/Register";
+import ResetPassword from "./pages/ResetPassword";
 import CrearRutina from "./pages/CrearRutina";
 import CalculadoraIMC from "./pages/CalculadoraIMC";
 import MiRutina from "./pages/MiRutina";
@@ -31,9 +34,22 @@ const queryClient = new QueryClient({
   },
 });
 
+// Protected route component
+const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+  const isAuthenticated = MysqlService.isLoggedIn();
+  const authRequired = localStorage.getItem('AUTH_REQUIRED') === 'true';
+
+  if (authRequired && !isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+  
+  return children;
+};
+
 const App = () => {
   const isMobile = useIsMobile();
   const [isLoading, setIsLoading] = useState(true);
+  const [authRequired, setAuthRequired] = useState<boolean>(localStorage.getItem('AUTH_REQUIRED') === 'true');
   
   // Load stored database configs and environment variables on startup
   useEffect(() => {
@@ -51,8 +67,20 @@ const App = () => {
           await mysqlConnection.setRoutinesDbConfig(routinesDbConfig);
         }
         
+        // Try to load auth database config
+        const authDbConfig = MysqlService.getConfigFromLocalStorage('auth');
+        if (authDbConfig) {
+          await mysqlConnection.setAuthDbConfig(authDbConfig);
+        }
+        
         // Initialize environment variables
         await envManager.initialize();
+        
+        // Check if auth is required from environment
+        const env = await envManager.getAll();
+        const authRequiredSetting = env.AUTH_REQUIRED === 'true';
+        setAuthRequired(authRequiredSetting);
+        localStorage.setItem('AUTH_REQUIRED', String(authRequiredSetting));
         
       } catch (err) {
         console.error('Error loading stored configurations:', err);
@@ -246,12 +274,44 @@ const App = () => {
             <NavBar />
             <div className="flex-1 animate-fade-in overflow-x-hidden">
               <Routes>
-                <Route path="/" element={<Home />} />
-                <Route path="/crear-rutina" element={<CrearRutina />} />
-                <Route path="/calculadora-imc" element={<CalculadoraIMC />} />
-                <Route path="/mi-rutina" element={<MiRutina />} />
-                <Route path="/maquinas-ejercicios" element={<MaquinasEjercicios />} />
-                <Route path="/ajustes" element={<Ajustes />} />
+                {/* Public routes */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
+                
+                {/* Protected or public routes based on AUTH_REQUIRED setting */}
+                <Route path="/" element={
+                  <ProtectedRoute>
+                    <Home />
+                  </ProtectedRoute>
+                } />
+                <Route path="/crear-rutina" element={
+                  <ProtectedRoute>
+                    <CrearRutina />
+                  </ProtectedRoute>
+                } />
+                <Route path="/calculadora-imc" element={
+                  <ProtectedRoute>
+                    <CalculadoraIMC />
+                  </ProtectedRoute>
+                } />
+                <Route path="/mi-rutina" element={
+                  <ProtectedRoute>
+                    <MiRutina />
+                  </ProtectedRoute>
+                } />
+                <Route path="/maquinas-ejercicios" element={
+                  <ProtectedRoute>
+                    <MaquinasEjercicios />
+                  </ProtectedRoute>
+                } />
+                <Route path="/ajustes" element={
+                  <ProtectedRoute>
+                    <Ajustes />
+                  </ProtectedRoute>
+                } />
+                
+                {/* 404 route */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>

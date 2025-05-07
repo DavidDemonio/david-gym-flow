@@ -1,3 +1,4 @@
+
 import express from 'express';
 import bodyParser from 'body-parser';
 import cors from 'cors';
@@ -7,6 +8,7 @@ import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 import * as mysql from './mysql.js';
 import * as email from './email.js';
+import * as auth from './auth.js';
 import { createLogger } from './logger.js';
 
 // Get the directory name correctly in ESM
@@ -29,7 +31,8 @@ const logger = createLogger('server');
 
 // Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: '50mb' })); // Increased limit for PDF data
+app.use(bodyParser.urlencoded({ extended: true, limit: '50mb' }));
 
 // Serve static files from the build directory
 app.use(express.static(path.join(__dirname, '../dist')));
@@ -186,7 +189,8 @@ app.get('/api/env', (req, res) => {
       SMTP_SECURE: process.env.SMTP_SECURE,
       SMTP_SECURE_TYPE: process.env.SMTP_SECURE_TYPE,
       APP_NAME: process.env.APP_NAME,
-      DEBUG_MODE: process.env.DEBUG_MODE
+      DEBUG_MODE: process.env.DEBUG_MODE,
+      AUTH_REQUIRED: process.env.AUTH_REQUIRED
     };
     
     res.json({ success: true, env: safeEnv });
@@ -197,7 +201,7 @@ app.get('/api/env', (req, res) => {
 });
 
 // Add an endpoint to update environment variables
-app.post('/api/env/update', (req, res) => {
+app.post('/api/env', (req, res) => {
   try {
     const { env } = req.body;
     
@@ -286,9 +290,7 @@ app.post('/api/mysql/get-user-stats', async (req, res) => {
   }
 });
 
-// Add these new endpoints for routines database
-
-// Endpoint to initialize the routines database
+// Routines database endpoints
 app.post('/api/mysql/initialize-routines-db', async (req, res) => {
   try {
     const result = await mysql.initializeRoutinesDb(req.body);
@@ -299,7 +301,6 @@ app.post('/api/mysql/initialize-routines-db', async (req, res) => {
   }
 });
 
-// Save routines to separate database
 app.post('/api/mysql/save-routines-separate', async (req, res) => {
   try {
     const result = await mysql.saveRoutinesToSeparateDb(req.body.config, req.body.routines);
@@ -310,13 +311,118 @@ app.post('/api/mysql/save-routines-separate', async (req, res) => {
   }
 });
 
-// Get routines from separate database
 app.post('/api/mysql/get-routines-separate', async (req, res) => {
   try {
-    const result = await mysql.getRoutinesFromSeparateDb(req.body.config);
+    const result = await mysql.get_routines_from_separate_db(req.body.config);
     res.json(result);
   } catch (error) {
     logger.error('Error getting routines from separate database:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Routine CRUD operations
+app.post('/api/mysql/create-routine', async (req, res) => {
+  try {
+    const { config, routine } = req.body;
+    const result = await mysql.createRoutine(config, routine);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error creating routine:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/mysql/update-routine-name', async (req, res) => {
+  try {
+    const { config, routineId, newName } = req.body;
+    const result = await mysql.updateRoutineName(config, routineId, newName);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error updating routine name:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/mysql/delete-routine', async (req, res) => {
+  try {
+    const { config, routineId } = req.body;
+    const result = await mysql.deleteRoutine(config, routineId);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error deleting routine:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/mysql/update-routine-status', async (req, res) => {
+  try {
+    const { config, routineId, status } = req.body;
+    const result = await mysql.updateRoutineStatus(config, routineId, status);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error updating routine status:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Authentication endpoints
+app.post('/api/mysql/initialize-auth-db', async (req, res) => {
+  try {
+    const result = await auth.initializeAuthDb(req.body);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error initializing auth database:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/register', async (req, res) => {
+  try {
+    const result = await auth.registerUser(req.body.config, req.body.user);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error registering user:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const result = await auth.loginUser(req.body.config, req.body.email, req.body.password);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error during login:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/verify-email', async (req, res) => {
+  try {
+    const result = await auth.verifyEmail(req.body.config, req.body.token);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error verifying email:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/send-reset', async (req, res) => {
+  try {
+    const result = await auth.sendPasswordReset(req.body.config, req.body.email);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error sending password reset:', error);
+    res.json({ success: false, error: error.message });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const result = await auth.resetPassword(req.body.config, req.body.token, req.body.newPassword);
+    res.json(result);
+  } catch (error) {
+    logger.error('Error resetting password:', error);
     res.json({ success: false, error: error.message });
   }
 });
@@ -364,7 +470,7 @@ app.listen(port, () => {
               logger.error('Failed to initialize user profile:', err);
             });
             
-            // Initialize default exercises and equipment (this will be added by the setup script)
+            // Initialize default exercises and equipment
             mysql.initializeDefaultData().catch(err => {
               logger.error('Failed to initialize default data:', err);
             });
@@ -376,6 +482,16 @@ app.listen(port, () => {
         logger.error('Failed to load user profile data:', err);
       }
     }
+  }
+  
+  // Log routines database connection info
+  if (process.env.ROUTINES_MYSQL_HOST) {
+    logger.info(`Routines MySQL configured: ${process.env.ROUTINES_MYSQL_HOST}:${process.env.ROUTINES_MYSQL_PORT || '3306'}`);
+  }
+  
+  // Log authentication database connection info
+  if (process.env.AUTH_MYSQL_HOST) {
+    logger.info(`Auth MySQL configured: ${process.env.AUTH_MYSQL_HOST}:${process.env.AUTH_MYSQL_PORT || '3306'}`);
   }
   
   // Log SMTP connection info (without password)

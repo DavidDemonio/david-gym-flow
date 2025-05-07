@@ -9,17 +9,44 @@ export interface DbConfig {
   database: string;
 }
 
+export interface EmailConfig {
+  host: string;
+  port: number;
+  user: string;
+  password: string;
+  from: string;
+  secure: boolean;
+  secureType: string;
+}
+
 export interface Exercise {
   id: number;
   name: string;
   description: string;
   muscleGroups: string[];
-  equipment: string;
+  equipment: string[];
   emoji: string;
   sets: number;
   reps: string;
   rest: string;
   calories: number;
+  difficulty?: string; // Added to fix type issues
+  caloriesPerRep?: number;
+  requiresGym?: boolean;
+  videoUrl?: string;
+  type?: string; // Added for compatibility with components
+}
+
+export interface Equipment {
+  id: number;
+  name: string;
+  muscleGroups: string[];
+  description: string;
+  image?: string;
+  emoji?: string;
+  category?: string;
+  caloriesPerHour?: number;
+  type?: string; // Added for compatibility with components
 }
 
 export interface Routine {
@@ -27,20 +54,36 @@ export interface Routine {
   name: string;
   dias: number;
   exercises: Record<string, Exercise[]>;
+  status?: string;
+  objetivo?: string; // Added for compatibility
+  nivel?: string; // Added for compatibility
+  equipamiento?: string; // Added for compatibility
+}
+
+export interface RoutineWithStatus extends Routine {
   status: string;
+  objetivo?: string;
+  nivel?: string;
+  equipamiento?: string;
 }
 
 interface Cache {
   exercises?: Exercise[];
   routines?: Routine[];
+  logs?: string[]; // Added for connection logs
 }
 
 class MySQLConnection {
   private mainDbConfig: DbConfig | null = null;
   private routinesDbConfig: DbConfig | null = null;
+  private authDbConfig: DbConfig | null = null; // Added for auth database
+  private emailConfig: EmailConfig | null = null; // Added for email settings
   private isMainDbConnected: boolean = false;
   private isRoutinesDbConnected: boolean = false;
-  private cachedData: Cache = {};
+  private isAuthDbConnected: boolean = false;
+  private cachedData: Cache = {
+    logs: [] // Initialize logs
+  };
 
   constructor() {
     this.loadConfigFromLocalStorage();
@@ -72,6 +115,45 @@ class MySQLConnection {
         console.error('Error parsing stored routines database config:', error);
       }
     }
+
+    const authDbStored = localStorage.getItem('authDbConfig');
+    if (authDbStored) {
+      try {
+        this.authDbConfig = JSON.parse(authDbStored);
+      } catch (error) {
+        console.error('Error parsing stored auth database config:', error);
+      }
+    }
+
+    const emailConfigStored = localStorage.getItem('emailConfig');
+    if (emailConfigStored) {
+      try {
+        this.emailConfig = JSON.parse(emailConfigStored);
+      } catch (error) {
+        console.error('Error parsing stored email config:', error);
+      }
+    }
+  }
+
+  // Connection logs methods
+  private logMessage(message: string): void {
+    if (!this.cachedData.logs) {
+      this.cachedData.logs = [];
+    }
+    const timestamp = new Date().toISOString();
+    this.cachedData.logs.push(`[${timestamp}] ${message}`);
+    // Keep only the last 100 logs
+    if (this.cachedData.logs.length > 100) {
+      this.cachedData.logs.shift();
+    }
+  }
+
+  getConnectionLogs(): string[] {
+    return this.cachedData.logs || [];
+  }
+
+  clearLogs(): void {
+    this.cachedData.logs = [];
   }
 
   // Main database configuration
@@ -79,6 +161,7 @@ class MySQLConnection {
     this.mainDbConfig = config;
     localStorage.setItem('mainDbConfig', JSON.stringify(config));
     this.isMainDbConnected = await this.testConnection(config);
+    this.logMessage(`Main database configuration updated: ${config.database}@${config.host}:${config.port}`);
   }
 
   getConfig(): DbConfig | null {
@@ -90,10 +173,97 @@ class MySQLConnection {
     this.routinesDbConfig = config;
     localStorage.setItem('routinesDbConfig', JSON.stringify(config));
     this.isRoutinesDbConnected = await this.testRoutinesDbConnection(config);
+    this.logMessage(`Routines database configuration updated: ${config.database}@${config.host}:${config.port}`);
   }
 
   getRoutinesDbConfig(): DbConfig | null {
     return this.routinesDbConfig;
+  }
+
+  // Auth database configuration
+  async setAuthDbConfig(config: DbConfig): Promise<void> {
+    this.authDbConfig = config;
+    localStorage.setItem('authDbConfig', JSON.stringify(config));
+    this.logMessage(`Auth database configuration updated: ${config.database}@${config.host}:${config.port}`);
+  }
+
+  getAuthDbConfig(): DbConfig | null {
+    return this.authDbConfig;
+  }
+
+  // Email configuration
+  async setEmailConfig(config: EmailConfig): Promise<void> {
+    this.emailConfig = config;
+    localStorage.setItem('emailConfig', JSON.stringify(config));
+    this.logMessage(`Email configuration updated: ${config.host}:${config.port}`);
+    return Promise.resolve();
+  }
+
+  getEmailConfig(): EmailConfig | null {
+    return this.emailConfig;
+  }
+
+  // Test email configuration
+  async testEmailConfig(config: EmailConfig = this.emailConfig!): Promise<{success: boolean, message: string}> {
+    try {
+      const response = await fetch('/api/email/test-connection', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(config),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      this.logMessage(`Email configuration test ${result.success ? 'successful' : 'failed'}`);
+      return result;
+    } catch (error) {
+      console.error('Error testing email configuration:', error);
+      this.logMessage(`Email configuration test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return { 
+        success: false, 
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
+  }
+
+  // Send email
+  async sendEmail(to: string, subject: string, body: string): Promise<{success: boolean, message: string}> {
+    try {
+      if (!this.emailConfig) {
+        throw new Error('Email configuration not found');
+      }
+
+      const response = await fetch('/api/email/send', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.emailConfig,
+          to,
+          subject,
+          body
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      return result;
+    } catch (error) {
+      console.error('Error sending email:', error);
+      return {
+        success: false,
+        message: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`
+      };
+    }
   }
 
   // Test main database connection
@@ -113,10 +283,12 @@ class MySQLConnection {
 
       const result = await response.json();
       this.isMainDbConnected = result.success;
+      this.logMessage(`Main database connection test ${result.success ? 'successful' : 'failed'}`);
       return result.success;
     } catch (error) {
       console.error('Error testing MySQL connection:', error);
       this.isMainDbConnected = false;
+      this.logMessage(`Main database connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }
@@ -138,14 +310,17 @@ class MySQLConnection {
 
       const result = await response.json();
       this.isRoutinesDbConnected = result.success;
+      this.logMessage(`Routines database connection test ${result.success ? 'successful' : 'failed'}`);
       return result.success;
     } catch (error) {
       console.error('Error testing routines MySQL connection:', error);
       this.isRoutinesDbConnected = false;
+      this.logMessage(`Routines database connection test failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }
 
+  // Connection status
   isConnected(): boolean {
     return this.isMainDbConnected;
   }
@@ -154,14 +329,34 @@ class MySQLConnection {
     return this.isRoutinesDbConnected;
   }
 
+  // Reconnect to database
+  async reconnect(): Promise<boolean> {
+    if (this.mainDbConfig) {
+      return this.testConnection(this.mainDbConfig);
+    }
+    return false;
+  }
+
   // Get user profile
   async getUserProfile(): Promise<any> {
     try {
-      const response = await fetch('/api/mysql/user-profile', {
-        method: 'GET',
+      // Get the user email from local storage if available
+      const currentUser = localStorage.getItem('currentUser');
+      let email = '';
+      if (currentUser) {
+        const user = JSON.parse(currentUser);
+        email = user.email || '';
+      }
+
+      const response = await fetch('/api/mysql/get-user-profile', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ 
+          config: this.mainDbConfig,
+          email
+        }),
       });
 
       if (!response.ok) {
@@ -169,10 +364,40 @@ class MySQLConnection {
       }
 
       const result = await response.json();
-      return result;
+      this.logMessage(`User profile retrieved successfully`);
+      return result.data;
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      this.logMessage(`Failed to retrieve user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
+    }
+  }
+
+  // Update user profile
+  async setUserProfile(profile: any): Promise<boolean> {
+    try {
+      const response = await fetch('/api/mysql/save-user-profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.mainDbConfig,
+          profile
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      this.logMessage(`User profile ${result.success ? 'saved' : 'failed to save'}`);
+      return result.success;
+    } catch (error) {
+      console.error('Error updating user profile:', error);
+      this.logMessage(`Failed to update user profile: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
     }
   }
 
@@ -183,11 +408,12 @@ class MySQLConnection {
     }
 
     try {
-      const response = await fetch('/api/mysql/exercises', {
-        method: 'GET',
+      const response = await fetch('/api/mysql/get-exercises', {
+        method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        body: JSON.stringify({ config: this.mainDbConfig }),
       });
 
       if (!response.ok) {
@@ -195,11 +421,54 @@ class MySQLConnection {
       }
 
       const result = await response.json();
-      this.cachedData.exercises = result;
-      return result;
+      // Add type property to each exercise for compatibility
+      const typedExercises = result.data.map((exercise: Exercise) => ({
+        ...exercise,
+        type: 'exercise'
+      }));
+      
+      this.cachedData.exercises = typedExercises;
+      this.logMessage(`Retrieved ${result.data.length} exercises`);
+      return typedExercises;
     } catch (error) {
       console.error('Error fetching exercises:', error);
+      this.logMessage(`Failed to retrieve exercises: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return [];
+    }
+  }
+
+  // Save exercises
+  async saveExercises(exercises: Exercise[]): Promise<boolean> {
+    try {
+      const response = await fetch('/api/mysql/save-exercises', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.mainDbConfig,
+          exercises: exercises.map(ex => {
+            // Remove type property before saving to backend
+            const { type, ...rest } = ex;
+            return rest;
+          })
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        this.cachedData.exercises = exercises;
+      }
+      this.logMessage(`Exercises ${result.success ? 'saved' : 'failed to save'}`);
+      return result.success;
+    } catch (error) {
+      console.error('Error saving exercises:', error);
+      this.logMessage(`Failed to save exercises: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
     }
   }
 
@@ -215,7 +484,7 @@ class MySQLConnection {
     }
 
     try {
-      const response = await fetch('/api/mysql/routines', {
+      const response = await fetch('/api/mysql/get-routines-separate', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -228,25 +497,68 @@ class MySQLConnection {
       }
 
       const result = await response.json();
-      this.cachedData.routines = result;
-      return result;
+      this.cachedData.routines = result.data;
+      this.logMessage(`Retrieved ${result.data.length} routines`);
+      return result.data;
     } catch (error) {
       console.error('Error fetching routines:', error);
+      this.logMessage(`Failed to retrieve routines: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return [];
     }
   }
 
-  // Create routine
-  async createRoutine(routine: Omit<Routine, 'id'>): Promise<Routine | null> {
+  // Save routines
+  async saveRoutines(routines: Routine[]): Promise<boolean> {
+    if (!this.routinesDbConfig) {
+      console.warn('Routines database not configured.');
+      return false;
+    }
+
     try {
+      const response = await fetch('/api/mysql/save-routines-separate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          config: this.routinesDbConfig,
+          routines
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      if (result.success) {
+        this.cachedData.routines = routines;
+      }
+      this.logMessage(`Routines ${result.success ? 'saved' : 'failed to save'}`);
+      return result.success;
+    } catch (error) {
+      console.error('Error saving routines:', error);
+      this.logMessage(`Failed to save routines: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      return false;
+    }
+  }
+
+  // Create a single routine
+  async saveRoutine(routine: Omit<Routine, 'id'>): Promise<Routine | null> {
+    try {
+      if (!this.routinesDbConfig) {
+        console.warn('Routines database not configured.');
+        return null;
+      }
+
       const response = await fetch('/api/mysql/create-routine', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          routine,
-          config: this.routinesDbConfig
+          config: this.routinesDbConfig,
+          routine
         }),
       });
 
@@ -260,213 +572,16 @@ class MySQLConnection {
         // Update local cache
         const cachedRoutines = this.cachedData.routines || [];
         this.cachedData.routines = [...cachedRoutines, result.routine];
+        this.logMessage(`Routine "${routine.name}" created successfully`);
         return result.routine;
       }
 
+      this.logMessage(`Failed to create routine "${routine.name}"`);
       return null;
     } catch (error) {
       console.error('Error creating routine:', error);
+      this.logMessage(`Error creating routine: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return null;
-    }
-  }
-
-  // Update routine name
-  async updateRoutineName(routineId: number, newName: string): Promise<boolean> {
-    try {
-      const response = await fetch('/api/mysql/update-routine-name', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          routineId, 
-          newName,
-          config: this.routinesDbConfig
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update local cache
-        const cachedRoutines = this.cachedData.routines || [];
-        this.cachedData.routines = cachedRoutines.map(routine => 
-          routine.id === routineId ? { ...routine, name: newName } : routine
-        );
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error updating routine name:', error);
-      return false;
-    }
-  }
-
-  // Delete routine
-  async deleteRoutine(routineId: number): Promise<boolean> {
-    try {
-      const response = await fetch('/api/mysql/delete-routine', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          routineId,
-          config: this.routinesDbConfig
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update local cache
-        const cachedRoutines = this.cachedData.routines || [];
-        this.cachedData.routines = cachedRoutines.filter(routine => routine.id !== routineId);
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error deleting routine:', error);
-      return false;
-    }
-  }
-
-  // Update routine status
-  async updateRoutineStatus(routineId: number, status: string): Promise<boolean> {
-    try {
-      const response = await fetch('/api/mysql/update-routine-status', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          routineId, 
-          status,
-          config: this.routinesDbConfig
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update local cache
-        const cachedRoutines = this.cachedData.routines || [];
-        this.cachedData.routines = cachedRoutines.map(routine => 
-          routine.id === routineId ? { ...routine, status } : routine
-        );
-        return true;
-      }
-      
-      return false;
-    } catch (error) {
-      console.error('Error updating routine status:', error);
-      return false;
-    }
-  }
-
-  // Add exercise to routine
-  async addExerciseToRoutine(routineId: number, day: string, exercise: Exercise): Promise<boolean> {
-    try {
-      const response = await fetch('/api/mysql/add-exercise-to-routine', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          routineId,
-          day,
-          exercise,
-          config: this.routinesDbConfig
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update local cache
-        const cachedRoutines = this.cachedData.routines || [];
-        this.cachedData.routines = cachedRoutines.map(routine => {
-          if (routine.id === routineId) {
-            const updatedExercises = { ...routine.exercises };
-            if (updatedExercises[day]) {
-              updatedExercises[day] = [...updatedExercises[day], exercise];
-            } else {
-              updatedExercises[day] = [exercise];
-            }
-            return { ...routine, exercises: updatedExercises };
-          }
-          return routine;
-        });
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Error adding exercise to routine:', error);
-      return false;
-    }
-  }
-
-  // Remove exercise from routine
-  async removeExerciseFromRoutine(routineId: number, day: string, exerciseId: number): Promise<boolean> {
-    try {
-      const response = await fetch('/api/mysql/remove-exercise-from-routine', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          routineId,
-          day,
-          exerciseId,
-          config: this.routinesDbConfig
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const result = await response.json();
-
-      if (result.success) {
-        // Update local cache
-        const cachedRoutines = this.cachedData.routines || [];
-        this.cachedData.routines = cachedRoutines.map(routine => {
-          if (routine.id === routineId) {
-            const updatedExercises = { ...routine.exercises };
-            if (updatedExercises[day]) {
-              updatedExercises[day] = updatedExercises[day].filter(ex => ex.id !== exerciseId);
-            }
-            return { ...routine, exercises: updatedExercises };
-          }
-          return routine;
-        });
-        return true;
-      }
-
-      return false;
-    } catch (error) {
-      console.error('Error removing exercise from routine:', error);
-      return false;
     }
   }
 
@@ -487,12 +602,15 @@ class MySQLConnection {
       const result = await response.json();
       
       if (result.success && result.env) {
+        this.logMessage('Environment variables loaded successfully');
         return result.env;
       } else {
+        this.logMessage('Failed to load environment variables');
         throw new Error('Could not load environment variables');
       }
     } catch (error) {
       console.error('Error loading environment variables:', error);
+      this.logMessage(`Error loading environment variables: ${error instanceof Error ? error.message : 'Unknown error'}`);
       throw error;
     }
   }
@@ -519,9 +637,11 @@ class MySQLConnection {
       }
 
       const result = await response.json();
+      this.logMessage(`Environment variables ${result.success ? 'updated successfully' : 'failed to update'}`);
       return result.success;
     } catch (error) {
       console.error('Error updating environment variables:', error);
+      this.logMessage(`Error updating environment variables: ${error instanceof Error ? error.message : 'Unknown error'}`);
       return false;
     }
   }

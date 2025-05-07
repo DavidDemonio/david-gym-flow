@@ -1,104 +1,214 @@
 
-import { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { Menu, X, Activity, Home, Dumbbell, Calculator, Settings } from 'lucide-react';
-import ThemeToggle from './ThemeToggle';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { Menu, X, Sun, Moon, User, LogOut } from 'lucide-react';
+import { Button } from "@/components/ui/button"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import MysqlService from '../services/MysqlService';
+import { useToast } from '../hooks/use-toast';
 
 const NavBar = () => {
-  const [isOpen, setIsOpen] = useState(false);
-
+  const { toast } = useToast();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [darkMode, setDarkMode] = useState(false);
+  const [currentUser, setCurrentUser] = useState<any>(null);
+  
+  // Check if the route is a login/register/reset-password page
+  const isAuthPage = ['/login', '/register', '/reset-password'].includes(location.pathname);
+  
+  useEffect(() => {
+    const isDark = document.documentElement.classList.contains('dark');
+    setDarkMode(isDark);
+    
+    // Check logged in user
+    const user = MysqlService.getCurrentUser();
+    setCurrentUser(user);
+  }, [location.pathname]);
+  
   const toggleMenu = () => {
-    setIsOpen(!isOpen);
+    setMobileMenuOpen(!mobileMenuOpen);
   };
-
-  const navItems = [
-    { name: 'Home', path: '/', icon: <Home className="w-5 h-5" /> },
-    { name: 'Crear Rutina', path: '/crear-rutina', icon: <Dumbbell className="w-5 h-5" /> },
-    { name: 'Calculadora IMC', path: '/calculadora-imc', icon: <Calculator className="w-5 h-5" /> },
-    { name: 'Mi Rutina', path: '/mi-rutina', icon: <Activity className="w-5 h-5" /> },
-    { name: 'Ajustes', path: '/ajustes', icon: <Settings className="w-5 h-5" /> },
-  ];
-
+  
+  const toggleDarkMode = () => {
+    const newDarkMode = !darkMode;
+    setDarkMode(newDarkMode);
+    
+    if (newDarkMode) {
+      document.documentElement.classList.add('dark');
+      localStorage.setItem('theme', 'dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+      localStorage.setItem('theme', 'light');
+    }
+  };
+  
+  const handleLogout = () => {
+    MysqlService.logout();
+    setCurrentUser(null);
+    toast({
+      title: "Logout successful",
+      description: "You have been logged out",
+    });
+    navigate('/login');
+  };
+  
+  const renderAuthButton = () => {
+    if (isAuthPage) return null;
+    
+    if (currentUser) {
+      return (
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon" className="rounded-full">
+              <User className="h-5 w-5" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>{currentUser.name || currentUser.email}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => navigate('/ajustes')}>
+              My Profile
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleLogout} className="text-red-600 dark:text-red-400">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      );
+    }
+    
+    return (
+      <Button onClick={() => navigate('/login')} variant="outline" size="sm" className="ml-2">
+        Login
+      </Button>
+    );
+  };
+  
   return (
-    <nav className="sticky top-0 z-50 bg-white/80 dark:bg-gray-900/80 backdrop-blur-md border-b border-gray-100 dark:border-gray-800 shadow-sm">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between h-16">
-          <div className="flex">
-            <div className="flex-shrink-0 flex items-center">
-              <div className="flex items-center">
-                <Dumbbell className="h-8 w-8 text-purple-600 dark:text-purple-400" />
-                <span className="ml-2 text-xl font-bold gradient-text">GymFlow</span>
-              </div>
-            </div>
+    <header className="bg-white dark:bg-gray-900 shadow-sm border-b border-gray-100 dark:border-gray-800">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 justify-between items-center">
+          {/* Logo */}
+          <div className="flex items-center">
+            <Link to="/" className="flex items-center">
+              <span className="font-bold text-xl mr-1 gradient-text">David</span>
+              <span className="font-semibold text-lg">GymFlow</span>
+            </Link>
           </div>
           
-          {/* Desktop menu */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.path}
-                className={({ isActive }) => 
-                  `flex items-center px-3 py-2 rounded-md text-sm font-medium transition-colors duration-200 ${
-                    isActive 
-                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' 
-                      : 'text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                  }`
-                }
-              >
-                <div className="flex items-center">
-                  {item.icon}
-                  <span className="ml-2">{item.name}</span>
-                </div>
-              </NavLink>
-            ))}
-            
-            {/* Theme toggle button */}
-            <div className="ml-2">
-              <ThemeToggle />
-            </div>
-          </div>
+          {/* Desktop navigation */}
+          <nav className="hidden md:flex items-center space-x-1">
+            {!isAuthPage && (
+              <>
+                <Link to="/" className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>Home</Link>
+                <Link to="/crear-rutina" className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/crear-rutina' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>Crear Rutina</Link>
+                <Link to="/mi-rutina" className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/mi-rutina' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>Mi Rutina</Link>
+                <Link to="/maquinas-ejercicios" className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/maquinas-ejercicios' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>Máquinas & Ejercicios</Link>
+                <Link to="/ajustes" className={`px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/ajustes' ? 'text-purple-600 dark:text-purple-400' : 'text-gray-700 dark:text-gray-300'}`}>Ajustes</Link>
+              </>
+            )}
+          </nav>
           
-          {/* Mobile menu button and theme toggle */}
-          <div className="flex items-center md:hidden space-x-2">
-            <ThemeToggle />
-            <button
-              onClick={toggleMenu}
-              className="inline-flex items-center justify-center p-2 rounded-md text-gray-400 hover:text-gray-500 dark:hover:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none"
-              aria-expanded="false"
+          {/* Right side buttons */}
+          <div className="flex items-center">
+            {/* Dark mode toggle */}
+            <Button 
+              variant="ghost"
+              size="icon"
+              onClick={toggleDarkMode}
+              className="mx-2"
             >
-              <span className="sr-only">{isOpen ? 'Cerrar menú' : 'Abrir menú'}</span>
-              {isOpen ? <X className="block h-6 w-6" /> : <Menu className="block h-6 w-6" />}
-            </button>
+              {darkMode ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </Button>
+            
+            {/* Auth button (login/logout) */}
+            {renderAuthButton()}
+            
+            {/* Mobile menu button */}
+            <div className="flex md:hidden ml-2">
+              <Button 
+                variant="ghost"
+                size="icon"
+                onClick={toggleMenu}
+                className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                {mobileMenuOpen ? (
+                  <X className="h-5 w-5" />
+                ) : (
+                  <Menu className="h-5 w-5" />
+                )}
+              </Button>
+            </div>
           </div>
         </div>
       </div>
-
-      {/* Mobile menu, show/hide based on menu state */}
-      {isOpen && (
-        <div className="md:hidden">
-          <div className="px-2 pt-2 pb-3 space-y-1 sm:px-3 bg-white/95 dark:bg-gray-900/95 shadow-lg rounded-b-lg">
-            {navItems.map((item) => (
-              <NavLink
-                key={item.name}
-                to={item.path}
-                onClick={() => setIsOpen(false)}
-                className={({ isActive }) => 
-                  `block px-3 py-2 rounded-md text-base font-medium flex items-center ${
-                    isActive 
-                      ? 'text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30' 
-                      : 'text-gray-600 dark:text-gray-300 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                  }`
-                }
+      
+      {/* Mobile menu */}
+      {mobileMenuOpen && !isAuthPage && (
+        <div className="md:hidden bg-white dark:bg-gray-900 shadow-lg border-t border-gray-100 dark:border-gray-800 animate-fade-in">
+          <div className="px-2 pt-2 pb-3 space-y-1">
+            <Link 
+              to="/" 
+              className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/' ? 'text-purple-600 dark:text-purple-400 bg-gray-50 dark:bg-gray-800' : 'text-gray-700 dark:text-gray-300'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Home
+            </Link>
+            <Link 
+              to="/crear-rutina" 
+              className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/crear-rutina' ? 'text-purple-600 dark:text-purple-400 bg-gray-50 dark:bg-gray-800' : 'text-gray-700 dark:text-gray-300'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Crear Rutina
+            </Link>
+            <Link 
+              to="/mi-rutina" 
+              className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/mi-rutina' ? 'text-purple-600 dark:text-purple-400 bg-gray-50 dark:bg-gray-800' : 'text-gray-700 dark:text-gray-300'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Mi Rutina
+            </Link>
+            <Link 
+              to="/maquinas-ejercicios" 
+              className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/maquinas-ejercicios' ? 'text-purple-600 dark:text-purple-400 bg-gray-50 dark:bg-gray-800' : 'text-gray-700 dark:text-gray-300'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Máquinas & Ejercicios
+            </Link>
+            <Link 
+              to="/ajustes" 
+              className={`block px-3 py-2 rounded-md text-base font-medium hover:bg-gray-100 dark:hover:bg-gray-800 ${location.pathname === '/ajustes' ? 'text-purple-600 dark:text-purple-400 bg-gray-50 dark:bg-gray-800' : 'text-gray-700 dark:text-gray-300'}`}
+              onClick={() => setMobileMenuOpen(false)}
+            >
+              Ajustes
+            </Link>
+            {currentUser && (
+              <Button 
+                variant="ghost"
+                className="w-full justify-start text-red-600 dark:text-red-400"
+                onClick={() => {
+                  handleLogout();
+                  setMobileMenuOpen(false);
+                }}
               >
-                {item.icon}
-                <span className="ml-3">{item.name}</span>
-              </NavLink>
-            ))}
+                <LogOut className="h-4 w-4 mr-2" />
+                Logout
+              </Button>
+            )}
           </div>
         </div>
       )}
-    </nav>
+    </header>
   );
 };
 
