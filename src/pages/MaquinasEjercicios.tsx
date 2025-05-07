@@ -60,34 +60,30 @@ const MaquinasEjercicios = () => {
   const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
-  // Convert exercise data to our Exercise type with proper adaptation - ensure string IDs
+  // Convert exercise data to our Exercise type with proper adaptation - ensure string IDs and valid difficulty
   const adaptedExercises = (exercises as unknown as DataExercise[]).map(ex => {
-    // Always convert to string ID to match the expected type in equipmentData.ts
+    // Always convert to string ID and ensure difficulty is one of the allowed values
     const adapted = adaptExercise({
       ...ex,
-      id: typeof ex.id === 'number' ? String(ex.id) : ex.id
+      id: typeof ex.id === 'number' ? String(ex.id) : ex.id,
+      // Map difficulty to one of the allowed values
+      difficulty: ex.difficulty?.toLowerCase().includes('principiante') ? 'principiante' :
+                  ex.difficulty?.toLowerCase().includes('avanzado') ? 'avanzado' : 'intermedio'
     });
     
-    // Double-check that ID is always a string
-    return {
-      ...adapted,
-      id: String(adapted.id)
-    };
+    return adapted;
   });
   
-  // Convert equipment data to our Equipment type with proper adaptation - ensure string IDs
+  // Convert equipment data to our Equipment type with proper adaptation - ensure string IDs and required emoji
   const adaptedEquipment = (gymEquipment as unknown as DataEquipment[]).map(eq => {
-    // Always convert to string ID to match the expected type in equipmentData.ts
+    // Always convert to string ID and ensure emoji is provided
     const adapted = adaptEquipment({
       ...eq,
-      id: typeof eq.id === 'number' ? String(eq.id) : eq.id
+      id: typeof eq.id === 'number' ? String(eq.id) : eq.id,
+      emoji: eq.emoji || '🏋️' // Ensure emoji is always provided
     });
     
-    // Double-check that ID is always a string
-    return {
-      ...adapted,
-      id: String(adapted.id)
-    };
+    return adapted;
   });
   
   // Function to clear search when tab changes
@@ -174,23 +170,17 @@ const MaquinasEjercicios = () => {
   const filteredEquipment = filterEquipment();
   const filteredExercises = filterExercises();
   
-  // Convert exercises to data format for compatible types
+  // Convert exercises to data format for compatible types, ensuring proper typing
   const convertedExercises = filteredExercises.map(ex => {
-    const dataEx = convertMySQLToDataExercise(ex);
-    // Ensure ID is always a string
-    return {
-      ...dataEx,
-      id: String(dataEx.id)
-    };
+    // Since adaptExercise already handles the type compatibility,
+    // we can use the converted data directly from our adapted exercises
+    return ex;
   });
   
   const convertedEquipment = filteredEquipment.map(eq => {
-    const dataEq = convertMySQLToDataEquipment(eq);
-    // Ensure ID is always a string
-    return {
-      ...dataEq,
-      id: String(dataEq.id)
-    };
+    // Since adaptEquipment already handles the type compatibility,
+    // we can use the converted data directly from our adapted equipment
+    return eq;
   });
   
   return (

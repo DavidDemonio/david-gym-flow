@@ -77,17 +77,18 @@ export function DatabaseSettingsForm() {
         toast({
           title: success ? "Conexión exitosa" : "Error de conexión",
           description: message,
+          variant: success ? "default" : "destructive"
         });
       } else if (typeof result === 'boolean') {
         // For boolean result
         setIsConnected(result);
-        const description = result ? 
-          "La conexión a la base de datos se ha establecido correctamente." : 
-          "No se pudo conectar a la base de datos.";
         
         toast({
           title: result ? "Conexión exitosa" : "Error de conexión",
-          description: description
+          description: result ? 
+            "La conexión a la base de datos se ha establecido correctamente." : 
+            "No se pudo conectar a la base de datos.",
+          variant: result ? "default" : "destructive"
         });
       } else {
         // Unexpected result type

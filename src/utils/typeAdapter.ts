@@ -66,6 +66,20 @@ export interface DataEquipment {
  * Always returns id as a string to fix type compatibility issues
  */
 export function adaptExercise(data: any): Exercise {
+  // Map general difficulty strings to specific allowed values
+  let mappedDifficulty: "principiante" | "intermedio" | "avanzado" = "intermedio";
+  
+  if (data.difficulty) {
+    const difficultyLower = data.difficulty.toLowerCase();
+    if (difficultyLower.includes("principiante") || difficultyLower.includes("beginner")) {
+      mappedDifficulty = "principiante";
+    } else if (difficultyLower.includes("avanzado") || difficultyLower.includes("advanced")) {
+      mappedDifficulty = "avanzado";
+    } else {
+      mappedDifficulty = "intermedio";
+    }
+  }
+
   return {
     id: typeof data.id === 'string' ? data.id : String(data.id || 0),
     name: data.name || '',
@@ -77,7 +91,7 @@ export function adaptExercise(data: any): Exercise {
     reps: data.reps || '10-12',
     rest: data.rest || '60s',
     calories: data.calories || 0,
-    difficulty: data.difficulty || 'Intermediate',
+    difficulty: mappedDifficulty,
     type: 'exercise',
     // Add any other required properties
     caloriesPerRep: data.caloriesPerRep || 0,
@@ -97,7 +111,7 @@ export function adaptEquipment(data: any): Equipment {
     description: data.description || '',
     muscleGroups: Array.isArray(data.muscleGroups) ? data.muscleGroups : [],
     image: data.image || '',
-    emoji: data.emoji || '🏋️',
+    emoji: data.emoji || '🏋️', // Ensure emoji is always provided
     category: data.category || '',
     caloriesPerHour: data.caloriesPerHour || 0,
     type: 'equipment'
