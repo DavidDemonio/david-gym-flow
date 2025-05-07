@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X } from 'lucide-react';
 import { gymEquipment, exercises, muscleGroups, equipmentCategories } from '../data/equipmentData';
@@ -151,7 +150,7 @@ const MaquinasEjercicios = () => {
   const filteredEquipment = filterEquipment();
   const filteredExercises = filterExercises();
   
-  // Convert exercises to data format for components that expect different interfaces
+  // Convert exercises to data format for compatible types
   const convertedExercises = filteredExercises.map(ex => convertMySQLToDataExercise(ex));
   const convertedEquipment = filteredEquipment.map(eq => convertMySQLToDataEquipment(eq));
   

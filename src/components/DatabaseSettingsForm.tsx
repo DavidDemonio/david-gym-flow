@@ -50,7 +50,7 @@ export function DatabaseSettingsForm() {
     try {
       const result = await mysqlConnection.testConnection(formData);
       
-      // Handle the connection result safely
+      // Handle the connection result safely with proper null checks
       if (result) {
         if (typeof result === 'object' && 'success' in result) {
           // For object with success property
