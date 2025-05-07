@@ -66,7 +66,7 @@ export interface DataEquipment {
  */
 export function adaptExercise(data: any): Exercise {
   return {
-    id: data.id || 0,
+    id: typeof data.id === 'string' ? data.id : String(data.id || 0),
     name: data.name || '',
     description: data.description || '',
     muscleGroups: Array.isArray(data.muscleGroups) ? data.muscleGroups : [],
@@ -90,7 +90,7 @@ export function adaptExercise(data: any): Exercise {
  */
 export function adaptEquipment(data: any): Equipment {
   return {
-    id: data.id || 0,
+    id: typeof data.id === 'string' ? data.id : String(data.id || 0),
     name: data.name || '',
     description: data.description || '',
     muscleGroups: Array.isArray(data.muscleGroups) ? data.muscleGroups : [],
@@ -158,6 +158,6 @@ export function convertMySQLToDataEquipment(equipment: Equipment): DataEquipment
   };
 }
 
-// Add these functions to match the imports in MaquinasEjercicios
+// Add these aliases for compatibility with existing imports
 export const adaptExerciseData = adaptExercise;
 export const adaptEquipmentData = adaptEquipment;

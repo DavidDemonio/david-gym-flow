@@ -50,12 +50,11 @@ export function DatabaseSettingsForm() {
     try {
       const result = await mysqlConnection.testConnection(formData);
       
-      // Safely check result properties with null/undefined checks
+      // Handle the connection result safely
       if (result) {
-        // Handle possible result type variants
         if (typeof result === 'object' && 'success' in result) {
           // For object with success property
-          const success = result.success === true;
+          const success = Boolean(result.success);
           setIsConnected(success);
           
           const successMessage = success ? 
@@ -64,7 +63,7 @@ export function DatabaseSettingsForm() {
           
           toast({
             title: success ? "Conexión exitosa" : "Error de conexión",
-            description: result.message || successMessage,
+            description: typeof result.message === 'string' ? result.message : successMessage,
           });
         } else if (typeof result === 'boolean') {
           // For boolean result

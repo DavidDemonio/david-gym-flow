@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X } from 'lucide-react';
 import { gymEquipment, exercises, muscleGroups, equipmentCategories } from '../data/equipmentData';
@@ -26,7 +27,6 @@ import {
   EquipmentCardProps,
   CreateWeeklyRoutineDialogProps
 } from '../utils/typeAdapter';
-import { Exercise, Equipment } from '../utils/mysqlConnection';
 
 // Animation variants for smooth transitions
 const containerVariants = {
@@ -55,17 +55,17 @@ const MaquinasEjercicios = () => {
   const [selectedTab, setSelectedTab] = useState('ejercicios');
   const [selectedMuscleGroups, setSelectedMuscleGroups] = useState<string[]>([]);
   const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
-  const [selectedEquipment, setSelectedEquipment] = useState<Equipment | null>(null);
-  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [selectedEquipment, setSelectedEquipment] = useState<any>(null);
+  const [selectedExercise, setSelectedExercise] = useState<any>(null);
   const [showRoutineDialog, setShowRoutineDialog] = useState(false);
-  const [selectedExercises, setSelectedExercises] = useState<Exercise[]>([]);
+  const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Convert exercise data to our Exercise type with proper adaptation
-  const adaptedExercises: Exercise[] = (exercises as unknown as DataExercise[]).map(ex => adaptExercise(ex));
+  const adaptedExercises = (exercises as unknown as DataExercise[]).map(ex => adaptExercise(ex));
   
   // Convert equipment data to our Equipment type with proper adaptation
-  const adaptedEquipment: Equipment[] = (gymEquipment as unknown as DataEquipment[]).map(eq => adaptEquipment(eq));
+  const adaptedEquipment = (gymEquipment as unknown as DataEquipment[]).map(eq => adaptEquipment(eq));
   
   // Function to clear search when tab changes
   useEffect(() => {
@@ -137,7 +137,7 @@ const MaquinasEjercicios = () => {
   };
   
   // Handle exercise selection for routines
-  const handleAddToRoutine = (exercise: Exercise) => {
+  const handleAddToRoutine = (exercise: any) => {
     if (!selectedExercises.find(ex => ex.id === exercise.id)) {
       setSelectedExercises(prev => [...prev, exercise]);
     }
@@ -331,7 +331,7 @@ const MaquinasEjercicios = () => {
                 <motion.div key={exercise.id} variants={itemVariants}>
                   <ExerciseCard 
                     exercise={exercise}
-                    onClick={() => setSelectedExercise(adaptedExercises.find(ex => ex.id === exercise.id) || null)}
+                    onClick={() => setSelectedExercise(exercise)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
                 </motion.div>
@@ -368,7 +368,7 @@ const MaquinasEjercicios = () => {
                 <motion.div key={equipment.id} variants={itemVariants}>
                   <EquipmentCard 
                     equipment={equipment}
-                    onClick={() => setSelectedEquipment(adaptedEquipment.find(eq => eq.id === equipment.id) || null)}
+                    onClick={() => setSelectedEquipment(equipment)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
                 </motion.div>
