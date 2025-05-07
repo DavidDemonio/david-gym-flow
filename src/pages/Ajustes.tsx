@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,7 +9,7 @@ import { mysqlConnection } from '../utils/mysqlConnection';
 import DatabaseSettingsForm from '../components/DatabaseSettingsForm';
 import { EmailSettingsForm } from '../components/EmailSettingsForm';
 import UserSettingsForm from '../components/UserSettingsForm';
-import { EnvEditor } from '../components/EnvEditor';  // Import with curly braces since we're importing a named export
+import { EnvEditor } from '../components/EnvEditor';
 import RoutinesDatabaseSettings from '../components/RoutinesDatabaseSettings';
 
 const Ajustes = () => {

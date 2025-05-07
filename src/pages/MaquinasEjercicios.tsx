@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Search, Filter, Dumbbell, Calendar, ArrowDownUp, X, ArrowRight } from 'lucide-react';
 import { gymEquipment, exercises, muscleGroups, equipmentCategories } from '../data/equipmentData';
@@ -15,8 +16,37 @@ import ExerciseCard from '../components/ExerciseCard';
 import ExerciseDetailDialog from '../components/ExerciseDetailDialog';
 import CreateWeeklyRoutineDialog from '../components/CreateWeeklyRoutineDialog';
 
-import { adaptExerciseData, adaptEquipmentData, DataExercise, DataEquipment } from '../utils/typeFixAdapter';
+import { adaptExerciseData, adaptEquipmentData } from '../components/typeFixAdapter';
 import { Exercise, Equipment } from '../utils/mysqlConnection';
+
+// Define data interfaces to match with equipmentData.ts
+interface DataExercise {
+  id: string;
+  name: string;
+  description: string;
+  muscleGroups: string[];
+  equipment: string[];
+  emoji: string;
+  difficulty?: string;
+  requiresGym?: boolean;
+  videoUrl?: string;
+  sets?: number;
+  reps?: string;
+  rest?: string;
+  calories?: number;
+  caloriesPerRep?: number;
+}
+
+interface DataEquipment {
+  id: string;
+  name: string;
+  muscleGroups: string[];
+  description: string;
+  image?: string;
+  emoji?: string;
+  category?: string;
+  caloriesPerHour?: number;
+}
 
 // Update interface definitions to include className
 interface ExerciseCardProps {
@@ -71,10 +101,10 @@ const MaquinasEjercicios = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Convert exercise data to our Exercise type with proper adaptation
-  const adaptedExercises: Exercise[] = exercises.map((ex: DataExercise) => adaptExerciseData(ex));
+  const adaptedExercises: Exercise[] = (exercises as DataExercise[]).map(ex => adaptExerciseData(ex));
   
   // Convert equipment data to our Equipment type with proper adaptation
-  const adaptedEquipment: Equipment[] = gymEquipment.map((eq: DataEquipment) => adaptEquipmentData(eq));
+  const adaptedEquipment: Equipment[] = (gymEquipment as DataEquipment[]).map(eq => adaptEquipmentData(eq));
   
   // Function to clear search when tab changes
   useEffect(() => {
@@ -335,7 +365,7 @@ const MaquinasEjercicios = () => {
               {filteredExercises.map(exercise => (
                 <motion.div key={exercise.id} variants={itemVariants}>
                   <ExerciseCard 
-                    exercise={exercise}
+                    exercise={exercise as any}
                     onClick={() => setSelectedExercise(exercise)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
@@ -372,7 +402,7 @@ const MaquinasEjercicios = () => {
               {filteredEquipment.map(equipment => (
                 <motion.div key={equipment.id} variants={itemVariants}>
                   <EquipmentCard 
-                    equipment={equipment}
+                    equipment={equipment as any}
                     onClick={() => setSelectedEquipment(equipment)}
                     className="h-full hover:shadow-lg hover:-translate-y-1 transition-all duration-200 cursor-pointer bg-white dark:bg-gray-900"
                   />
@@ -388,11 +418,11 @@ const MaquinasEjercicios = () => {
         exercise={selectedExercise}
         open={!!selectedExercise}
         onClose={() => setSelectedExercise(null)}
-        onAddToRoutine={handleAddToRoutine}
+        onAddToRoutine={handleAddToRoutine as any}
       />
       
       <CreateWeeklyRoutineDialog 
-        exercises={adaptedExercises} 
+        exercises={adaptedExercises as any} 
         open={showRoutineDialog}
         onClose={() => setShowRoutineDialog(false)}
       />

@@ -6,7 +6,6 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Label } from "@/components/ui/label";
 import { Loader2, Settings, Save } from "lucide-react";
 import { useToast } from "../hooks/use-toast";
-import { mysqlConnection } from "../utils/mysqlConnection";
 import { envManager } from "../utils/envManager";
 
 export function EnvEditor() {
@@ -21,7 +20,6 @@ export function EnvEditor() {
   const loadVariables = async () => {
     setIsLoading(true);
     try {
-      // Use the envManager instead of directly calling mysqlConnection
       const loadedVars = await envManager.getAllVariables();
       
       if (loadedVars && typeof loadedVars === 'object') {
@@ -162,5 +160,3 @@ export function EnvEditor() {
     </Card>
   );
 }
-
-export { EnvEditor };

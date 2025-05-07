@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import {
   Card, CardContent, CardDescription, 
@@ -245,6 +246,7 @@ export function RoutineManager() {
     }
   };
   
+  // Function to generate content for email
   const generateRoutineEmailContent = (routine: RoutineWithStatus): string => {
     let content = `<h2>Rutina: ${routine.name}</h2>`;
     content += `<p>Estado: ${getStatusText(routine.status)}</p>`;
@@ -270,7 +272,8 @@ export function RoutineManager() {
     content += `<p><em>Generado por GymFlow</em></p>`;
     return content;
   };
-
+  
+  // Method to send email with routine information
   const sendRoutineByEmail = async (routine: RoutineWithStatus) => {
     setIsSendingEmail(true);
     try {
@@ -373,93 +376,36 @@ export function RoutineManager() {
     }
   };
 
-  // Method to handle email operations for routines
-  const sendRoutineEmail = async (routine) => {
-    try {
-      const userProfileResponse = await mysqlConnection.getUserProfile();
-      const userProfile = userProfileResponse?.data;
-      
-      if (userProfile?.email) {
-        const emailResult = await mysqlConnection.sendEmail(
-          userProfile.email,
-          `Tu rutina: ${routine.name}`,
-          generateRoutineEmailContent(routine)
-        );
-        
-        if (emailResult.success) {
+  // Handler for changing routine status
+  const handleChangeStatus = (routineId: number, newStatus: RoutineStatus) => {
+    const updatedRoutines = routines.map(routine => 
+      routine.id === routineId 
+        ? { ...routine, status: newStatus } 
+        : routine
+    );
+    
+    setRoutines(updatedRoutines);
+    
+    // Save status in localStorage
+    localStorage.setItem(`routine_status_${routineId}`, newStatus);
+    
+    // Update in database if connected
+    if (mysqlConnection.isConnected()) {
+      mysqlConnection.saveRoutines(updatedRoutines)
+        .then(() => {
           toast({
-            title: "Email enviado",
-            description: `Rutina enviada a ${userProfile.email}`,
+            title: "Estado actualizado",
+            description: `La rutina ha sido marcada como ${getStatusText(newStatus)}`
           });
-        } else {
+        })
+        .catch(err => {
+          console.error("Error saving routine status:", err);
           toast({
             variant: "destructive",
-            title: "Error al enviar email",
-            description: "No se pudo enviar el email con la rutina"
+            title: "Error al guardar",
+            description: "No se pudo guardar el estado de la rutina"
           });
-        }
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error al enviar email",
-          description: "No se encontró una dirección de email asociada a tu cuenta"
         });
-      }
-    } catch (error) {
-      console.error("Error sending routine email:", error);
-      toast({
-        variant: "destructive",
-        title: "Error al enviar email",
-        description: "Ocurrió un error al enviar el email"
-      });
-    } finally {
-      setIsSendingEmail(false);
-    }
-  };
-
-  const generateRoutineEmailContent = (routine: RoutineWithStatus) => {
-    // Generate HTML content for the routine email
-    return `
-      <h1>Rutina: ${routine.name}</h1>
-      <p>Estado: ${routine.status}</p>
-      <p>Objetivo: ${routine.objetivo || 'No especificado'}</p>
-      <p>Nivel: ${routine.nivel || 'No especificado'}</p>
-      <p>Equipamiento: ${routine.equipamiento || 'No especificado'}</p>
-    `;
-  };
-
-  const handleSendEmail = async (routine: RoutineWithStatus) => {
-    setIsSendingEmail(true);
-    try {
-      const userResponse = await mysqlConnection.getUserProfile();
-      // Access email safely
-      const userEmail = userResponse?.data?.email || '';
-      if (userEmail) {
-        await mysqlConnection.sendEmail({
-          to: userEmail,
-          subject: `Tu rutina: ${routine.name}`,
-          html: generateRoutineEmailContent(routine)
-        });
-        toast({
-          title: "Email enviado",
-          description: `Se ha enviado la rutina a ${userEmail}`
-        });
-      } else {
-        toast({
-          variant: "destructive",
-          title: "Error",
-          description: "No se pudo obtener tu dirección de correo"
-        });
-      }
-    } catch (error) {
-      console.error("Error sending email:", error);
-      toast({
-        variant: "destructive",
-        title: "Error",
-        description: "No se pudo enviar el email con la rutina"
-      });
-    } finally {
-      setIsSendingEmail(false);
     }
   };
 
