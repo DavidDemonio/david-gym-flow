@@ -51,45 +51,46 @@ export function DatabaseSettingsForm() {
       const result = await mysqlConnection.testConnection(formData);
       
       // Handle the connection result safely with proper null checks
-      if (result) {
-        if (typeof result === 'object' && 'success' in result) {
-          // For object with success property
-          const success = Boolean(result.success);
-          setIsConnected(success);
-          
-          const successMessage = success ? 
-            "La conexión a la base de datos se ha establecido correctamente." : 
-            "No se pudo conectar a la base de datos.";
-          
-          toast({
-            title: success ? "Conexión exitosa" : "Error de conexión",
-            description: typeof result.message === 'string' ? result.message : successMessage,
-          });
-        } else if (typeof result === 'boolean') {
-          // For boolean result
-          setIsConnected(result);
-          toast({
-            title: result ? "Conexión exitosa" : "Error de conexión",
-            description: result ? 
-              "La conexión a la base de datos se ha establecido correctamente." : 
-              "No se pudo conectar a la base de datos."
-          });
-        } else {
-          // Unexpected result type
-          setIsConnected(false);
-          toast({
-            variant: "destructive",
-            title: "Error de conexión",
-            description: "Respuesta inesperada al probar la conexión."
-          });
-        }
-      } else {
+      if (!result) {
         // No result returned
         setIsConnected(false);
         toast({
           variant: "destructive",
           title: "Error de conexión",
           description: "No se recibió respuesta al probar la conexión."
+        });
+        return;
+      }
+      
+      if (typeof result === 'object' && 'success' in result) {
+        // For object with success property
+        const success = Boolean(result.success);
+        setIsConnected(success);
+        
+        const successMessage = success ? 
+          "La conexión a la base de datos se ha establecido correctamente." : 
+          "No se pudo conectar a la base de datos.";
+        
+        toast({
+          title: success ? "Conexión exitosa" : "Error de conexión",
+          description: result.message && typeof result.message === 'string' ? result.message : successMessage,
+        });
+      } else if (typeof result === 'boolean') {
+        // For boolean result
+        setIsConnected(result);
+        toast({
+          title: result ? "Conexión exitosa" : "Error de conexión",
+          description: result ? 
+            "La conexión a la base de datos se ha establecido correctamente." : 
+            "No se pudo conectar a la base de datos."
+        });
+      } else {
+        // Unexpected result type
+        setIsConnected(false);
+        toast({
+          variant: "destructive",
+          title: "Error de conexión",
+          description: "Respuesta inesperada al probar la conexión."
         });
       }
     } catch (err) {

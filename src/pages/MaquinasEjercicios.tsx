@@ -60,11 +60,19 @@ const MaquinasEjercicios = () => {
   const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
   const [filtersOpen, setFiltersOpen] = useState(false);
   
-  // Convert exercise data to our Exercise type with proper adaptation
-  const adaptedExercises = (exercises as unknown as DataExercise[]).map(ex => adaptExercise(ex));
+  // Convert exercise data to our Exercise type with proper adaptation - ensure string IDs
+  const adaptedExercises = (exercises as unknown as DataExercise[]).map(ex => {
+    const adapted = adaptExercise(ex);
+    adapted.id = String(adapted.id); // Ensure id is a string
+    return adapted;
+  });
   
-  // Convert equipment data to our Equipment type with proper adaptation
-  const adaptedEquipment = (gymEquipment as unknown as DataEquipment[]).map(eq => adaptEquipment(eq));
+  // Convert equipment data to our Equipment type with proper adaptation - ensure string IDs
+  const adaptedEquipment = (gymEquipment as unknown as DataEquipment[]).map(eq => {
+    const adapted = adaptEquipment(eq);
+    adapted.id = String(adapted.id); // Ensure id is a string
+    return adapted;
+  });
   
   // Function to clear search when tab changes
   useEffect(() => {

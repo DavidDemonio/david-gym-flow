@@ -63,6 +63,7 @@ export interface DataEquipment {
 
 /**
  * Convert an object to an Exercise type with all required properties
+ * Always returns id as a string to fix type compatibility issues
  */
 export function adaptExercise(data: any): Exercise {
   return {
@@ -87,6 +88,7 @@ export function adaptExercise(data: any): Exercise {
 
 /**
  * Convert an object to an Equipment type with all required properties
+ * Always returns id as a string to fix type compatibility issues
  */
 export function adaptEquipment(data: any): Equipment {
   return {
