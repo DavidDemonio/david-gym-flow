@@ -62,10 +62,10 @@ const MaquinasEjercicios = () => {
   const [filtersOpen, setFiltersOpen] = useState(false);
   
   // Convert exercise data to our Exercise type with proper adaptation
-  const adaptedExercises: Exercise[] = (exercises as DataExercise[]).map(ex => adaptExercise(ex));
+  const adaptedExercises: Exercise[] = (exercises as unknown as DataExercise[]).map(ex => adaptExercise(ex));
   
   // Convert equipment data to our Equipment type with proper adaptation
-  const adaptedEquipment: Equipment[] = (gymEquipment as DataEquipment[]).map(eq => adaptEquipment(eq));
+  const adaptedEquipment: Equipment[] = (gymEquipment as unknown as DataEquipment[]).map(eq => adaptEquipment(eq));
   
   // Function to clear search when tab changes
   useEffect(() => {
