@@ -63,14 +63,20 @@ const MaquinasEjercicios = () => {
   // Convert exercise data to our Exercise type with proper adaptation - ensure string IDs
   const adaptedExercises = (exercises as unknown as DataExercise[]).map(ex => {
     const adapted = adaptExercise(ex);
-    adapted.id = String(adapted.id); // Ensure id is a string
+    // Ensure id is always a string to fix type compatibility issues
+    if (typeof adapted.id !== 'string') {
+      adapted.id = String(adapted.id);
+    }
     return adapted;
   });
   
   // Convert equipment data to our Equipment type with proper adaptation - ensure string IDs
   const adaptedEquipment = (gymEquipment as unknown as DataEquipment[]).map(eq => {
     const adapted = adaptEquipment(eq);
-    adapted.id = String(adapted.id); // Ensure id is a string
+    // Ensure id is always a string to fix type compatibility issues
+    if (typeof adapted.id !== 'string') {
+      adapted.id = String(adapted.id);
+    }
     return adapted;
   });
   

@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { 
   Tabs, TabsContent, TabsList, TabsTrigger 
@@ -30,7 +31,7 @@ import {
 } from "lucide-react";
 
 import { Exercise, Equipment } from "../utils/mysqlConnection";
-import { adaptExerciseData, adaptEquipmentData } from "../utils/typeFixAdapter";
+import { adaptExercise as adaptExerciseData, adaptEquipment as adaptEquipmentData } from "../utils/typeAdapter";
 
 // Define extended types that include type property
 interface ExerciseWithType extends Exercise {
